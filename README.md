@@ -69,6 +69,16 @@
 - [FetchGroupID/](FetchGroupID/) : LINEグループID取得用のAPIGateway/Lambda一式
 - [IotCore/](IotCore/) : IoT Core基盤の定義
 
+### Step 2.5: セットアップ/チュートリアル
+
+ローカル準備の手順はドキュメントに整理しています。該当するOSの手順に従ってください。
+
+- Terraformのインストール手順: [docs/Setup/terraform-setup.md.md](docs/Setup/terraform-setup.md.md)
+- AWS CLIのインストールと初期設定（基本 + SSO）: [docs/Setup/aws-cli-setup.md](docs/Setup/aws-cli-setup.md)
+- .gitignore対象の秘匿ファイル配布先: [docs/Setup/secret_files.md](docs/Setup/secret_files.md)
+
+SSO利用時は、CLIプロファイルを指定して作業します（例: `$AWS_PROFILE` を設定）。
+
 ### Step 3: TODOの中から着手しやすいもの
 
 以下のいずれかに着手するとスムーズです。
