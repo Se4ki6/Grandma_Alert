@@ -1,0 +1,229 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>エラー - 緊急監視ダッシュボード</title>
+    <style>
+        :root {
+            --primary-color: #e74c3c;
+            --background-dark: #1a1a2e;
+            --background-card: #16213e;
+            --text-primary: #ffffff;
+            --text-secondary: #a0a0a0;
+            --border-radius: 12px;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', 'Hiragino Sans', 'Meiryo', sans-serif;
+            background: linear-gradient(135deg, var(--background-dark) 0%, #0f0f23 100%);
+            color: var(--text-primary);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            padding: 2rem;
+            text-align: center;
+        }
+
+        .error-container {
+            max-width: 500px;
+            background: var(--background-card);
+            padding: 3rem;
+            border-radius: var(--border-radius);
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+        }
+
+        .error-icon {
+            font-size: 5rem;
+            margin-bottom: 1.5rem;
+        }
+
+        .error-code {
+            font-size: 4rem;
+            font-weight: bold;
+            color: var(--primary-color);
+            margin-bottom: 0.5rem;
+        }
+
+        .error-title {
+            font-size: 1.5rem;
+            margin-bottom: 1rem;
+        }
+
+        .error-message {
+            color: var(--text-secondary);
+            margin-bottom: 2rem;
+            line-height: 1.8;
+        }
+
+        .error-actions {
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+        }
+
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.5rem;
+            padding: 1rem 2rem;
+            border-radius: var(--border-radius);
+            text-decoration: none;
+            font-weight: 600;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
+        }
+
+        .btn-primary {
+            background: linear-gradient(90deg, var(--primary-color), #c0392b);
+            color: white;
+        }
+
+        .btn-secondary {
+            background: rgba(255, 255, 255, 0.1);
+            color: var(--text-primary);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+
+        .help-text {
+            margin-top: 2rem;
+            font-size: 0.85rem;
+            color: var(--text-secondary);
+        }
+
+        .help-text a {
+            color: var(--primary-color);
+            text-decoration: none;
+        }
+
+        .help-text a:hover {
+            text-decoration: underline;
+        }
+
+        /* エラーコード別の表示切替 */
+        .error-details {
+            background: rgba(0, 0, 0, 0.2);
+            padding: 1rem;
+            border-radius: 8px;
+            margin-bottom: 1.5rem;
+            font-size: 0.9rem;
+        }
+
+        .error-details code {
+            font-family: 'Consolas', monospace;
+            color: var(--primary-color);
+        }
+
+        @media (max-width: 480px) {
+            .error-container {
+                padding: 2rem;
+            }
+
+            .error-code {
+                font-size: 3rem;
+            }
+
+            .error-title {
+                font-size: 1.2rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="error-container">
+        <div class="error-icon">⚠️</div>
+        <div class="error-code" id="errorCode">エラー</div>
+        <h1 class="error-title" id="errorTitle">ページが見つかりません</h1>
+        
+        <div class="error-details" id="errorDetails">
+            <p>リクエストされたページは存在しないか、アクセスできません。</p>
+        </div>
+
+        <p class="error-message" id="errorMessage">
+            お探しのページは移動または削除された可能性があります。<br>
+            URLを確認するか、ダッシュボードに戻ってください。
+        </p>
+
+        <div class="error-actions">
+            <a href="index.html" class="btn btn-primary">
+                🏠 ダッシュボードに戻る
+            </a>
+            <a href="javascript:location.reload()" class="btn btn-secondary">
+                🔄 ページを再読み込み
+            </a>
+        </div>
+
+        <p class="help-text">
+            問題が解決しない場合は、システム管理者にお問い合わせください。
+        </p>
+    </div>
+
+    <script>
+        // URLパラメータからエラーコードを取得して表示をカスタマイズ
+        const urlParams = new URLSearchParams(window.location.search);
+        const errorCode = urlParams.get('code') || '404';
+
+        const errorConfigs = {
+            '400': {
+                icon: '🚫',
+                code: '400',
+                title: '不正なリクエスト',
+                details: 'リクエストの形式が正しくありません。',
+                message: 'URLを確認して、もう一度お試しください。'
+            },
+            '403': {
+                icon: '🔒',
+                code: '403',
+                title: 'アクセスが拒否されました',
+                details: 'このページにアクセスする権限がありません。',
+                message: 'アクセス権限を確認するか、管理者にお問い合わせください。<br>署名付きURLの有効期限が切れている可能性があります。'
+            },
+            '404': {
+                icon: '🔍',
+                code: '404',
+                title: 'ページが見つかりません',
+                details: 'リクエストされたページは存在しません。',
+                message: 'お探しのページは移動または削除された可能性があります。<br>URLを確認するか、ダッシュボードに戻ってください。'
+            },
+            '500': {
+                icon: '💥',
+                code: '500',
+                title: 'サーバーエラー',
+                details: 'サーバーで予期しないエラーが発生しました。',
+                message: 'しばらく時間をおいて、もう一度お試しください。<br>問題が続く場合は管理者にお問い合わせください。'
+            },
+            '503': {
+                icon: '🔧',
+                code: '503',
+                title: 'サービス利用不可',
+                details: 'サーバーが一時的に利用できません。',
+                message: 'メンテナンス中か、一時的な障害が発生しています。<br>しばらく待ってから再度アクセスしてください。'
+            }
+        };
+
+        const config = errorConfigs[errorCode] || errorConfigs['404'];
+
+        document.querySelector('.error-icon').textContent = config.icon;
+        document.getElementById('errorCode').textContent = config.code;
+        document.getElementById('errorTitle').textContent = config.title;
+        document.getElementById('errorDetails').innerHTML = `<p>${config.details}</p>`;
+        document.getElementById('errorMessage').innerHTML = config.message;
+
+        // ページタイトル更新
+        document.title = `${config.code} ${config.title} - 緊急監視ダッシュボード`;
+    </script>
+</body>
+</html>
