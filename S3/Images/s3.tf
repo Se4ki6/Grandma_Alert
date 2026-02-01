@@ -42,3 +42,52 @@ resource "aws_s3_bucket_lifecycle_configuration" "images_expire" {
     }
   }
 }
+
+// ---------------------------------------------
+// CORS設定（ブラウザからのアクセス用）
+// ---------------------------------------------
+resource "aws_s3_bucket_cors_configuration" "images" {
+  bucket = aws_s3_bucket.images.id
+
+  cors_rule {
+    allowed_headers = ["*"]
+    allowed_methods = ["GET", "HEAD"]
+    allowed_origins = ["*"] // テスト用。本番環境ではCloudFrontドメインに限定
+    expose_headers  = ["ETag"]
+    max_age_seconds = 3000
+  }
+}
+
+// ---------------------------------------------
+// パブリックアクセスブロック設定（テスト用に緩和）
+// ---------------------------------------------
+resource "aws_s3_bucket_public_access_block" "images" {
+  bucket = aws_s3_bucket.images.id
+
+  block_public_acls       = false // テスト用。本番環境ではtrue推奨
+  block_public_policy     = false // テスト用。本番環境ではtrue推奨
+  ignore_public_acls      = false // テスト用。本番環境ではtrue推奨
+  restrict_public_buckets = false // テスト用。本番環境ではtrue推奨
+}
+
+// ---------------------------------------------
+// バケットポリシー（読み取り専用パブリックアクセス）
+// ---------------------------------------------
+resource "aws_s3_bucket_policy" "images_public_read" {
+  bucket = aws_s3_bucket.images.id
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Sid       = "PublicReadGetObject"
+        Effect    = "Allow"
+        Principal = "*"
+        Action    = "s3:GetObject"
+        Resource  = "${aws_s3_bucket.images.arn}/*"
+      }
+    ]
+  })
+
+  depends_on = [aws_s3_bucket_public_access_block.images]
+}
