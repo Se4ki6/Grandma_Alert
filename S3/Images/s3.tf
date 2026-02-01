@@ -91,3 +91,36 @@ resource "aws_s3_bucket_policy" "images_public_read" {
 
   depends_on = [aws_s3_bucket_public_access_block.images]
 }
+
+// ---------------------------------------------
+// S3 Event Notification to Lambda
+// ---------------------------------------------
+locals {
+  # 監視したい拡張子のリスト
+  target_suffixes = [".jpg", ".jpeg", ".png", ".gif"]
+}
+
+resource "aws_s3_bucket_notification" "images_upload_trigger" {
+  bucket = aws_s3_bucket.images.id
+
+  # リストの分だけ lambda_function ブロックを生成
+  dynamic "lambda_function" {
+    for_each = local.target_suffixes
+    content {
+      lambda_function_arn = var.line_notification_lambda_arn
+      events              = ["s3:ObjectCreated:*"]
+      filter_suffix       = lambda_function.value # ここでリストの値が参照される
+    }
+  }
+
+  depends_on = [aws_lambda_permission.allow_s3_invoke]
+}
+
+// Lambda Permission for S3 to invoke
+resource "aws_lambda_permission" "allow_s3_invoke" {
+  statement_id  = "AllowExecutionFromS3Bucket"
+  action        = "lambda:InvokeFunction"
+  function_name = var.line_notification_lambda_name
+  principal     = "s3.amazonaws.com"
+  source_arn    = aws_s3_bucket.images.arn
+}
