@@ -455,9 +455,13 @@
         // ===== 設定 =====
         const CONFIG = {
             REFRESH_INTERVAL: 5000,      // 5秒間隔でリフレッシュ
-            S3_BUCKET_URL: '',           // S3バケットのURLを設定（空の場合はダミーデータ使用）
+            S3_BUCKET_NAME: 'grandma-alert-images-bucket-339126664118', // S3 Imagesバケット名
+            S3_REGION: 'ap-northeast-1', // AWSリージョン
+            LAMBDA_SIGNED_URL_ENDPOINT: '', // Lambda署名付きURL生成エンドポイント（将来の実装用）
+            DYNAMODB_TABLE_NAME: 'grandma-alert-emergency-info', // DynamoDB テーブル名
             IMAGE_TIMEOUT: 10000,        // 画像読み込みタイムアウト（10秒）
             MAX_RETRY: 3,                // 最大リトライ回数
+            USE_DEMO_MODE: false,        // デモモード（false=S3直接アクセス、true=デモ画像）
         };
 
         // ===== 状態管理 =====
@@ -488,14 +492,9 @@
         // ===== カメラデータ読み込み =====
         async function loadCameras() {
             try {
-                if (CONFIG.S3_BUCKET_URL) {
-                    // S3からカメラリストを取得
-                    const response = await fetch(`${CONFIG.S3_BUCKET_URL}/cameras.json`);
-                    if (response.ok) {
-                        cameras = await response.json();
-                    } else {
-                        throw new Error('カメラリストの取得に失敗しました');
-                    }
+                if (!CONFIG.USE_DEMO_MODE && CONFIG.S3_BUCKET_NAME) {
+                    // S3バケットから画像リストを取得（IoTデバイスからアップロードされた画像）
+                    await loadCamerasFromS3();
                 } else {
                     // デモモード
                     cameras = DEMO_CAMERAS;
@@ -509,6 +508,53 @@
                 console.error('カメラ読み込みエラー:', error);
                 showToast('カメラデータの読み込みに失敗しました', 'error');
                 updateConnectionStatus(false);
+                // フォールバックとしてデモデータを使用
+                cameras = DEMO_CAMERAS;
+                renderCameras();
+            }
+        }
+
+        // S3バケットから画像リストを取得
+        async function loadCamerasFromS3() {
+            // S3バケット内の画像をリストアップ
+            // 実際の実装では AWS SDK または API Gateway経由でアクセス
+            // 仮のデータ構造として、各カメラIDフォルダに画像が保存されていると仮定
+            
+            // TODO: 実際にはAPI Gateway + Lambda で S3のリストを取得する実装が必要
+            // 例: GET /api/cameras -> Lambda -> S3.listObjectsV2() -> カメラリスト返却
+            
+            cameras = DEMO_CAMERAS; // 暫定的にデモデータを使用
+        }
+
+        // 署名付きURLを生成してS3画像を取得
+        async function getSignedImageUrl(cameraId, imageKey) {
+            if (CONFIG.USE_DEMO_MODE || !CONFIG.LAMBDA_SIGNED_URL_ENDPOINT) {
+                return null;
+            }
+
+            try {
+                // Lambda関数を呼び出して署名付きURLを生成
+                const response = await fetch(CONFIG.LAMBDA_SIGNED_URL_ENDPOINT, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        bucket: CONFIG.S3_BUCKET_NAME,
+                        key: imageKey,
+                        expiration_minutes: 5, // 5分間有効
+                    })
+                });
+
+                if (!response.ok) {
+                    throw new Error(`署名付きURL生成失敗: ${response.status}`);
+                }
+
+                const data = await response.json();
+                return data.signed_url;
+            } catch (error) {
+                console.error('署名付きURL取得エラー:', error);
+                return null;
             }
         }
 
@@ -571,7 +617,7 @@
         }
 
         // ===== 画像読み込み =====
-        function loadCameraImage(cameraId) {
+        async function loadCameraImage(cameraId) {
             const img = document.getElementById(`img-${cameraId}`);
             const placeholder = document.getElementById(`placeholder-${cameraId}`);
             const statusEl = document.getElementById(`status-${cameraId}`);
@@ -583,12 +629,16 @@
             const timestamp = Date.now();
             let imageUrl;
 
-            if (CONFIG.S3_BUCKET_URL) {
-                // S3から最新画像を取得
-                imageUrl = `${CONFIG.S3_BUCKET_URL}/${cameraId}/latest.jpg?t=${timestamp}`;
-            } else {
+            if (CONFIG.USE_DEMO_MODE) {
                 // デモ用プレースホルダー画像
                 imageUrl = `https://picsum.photos/seed/${cameraId}-${Math.floor(timestamp/5000)}/640/480`;
+            } else {
+                // S3バケットから直接画像を取得
+                // URL形式: https://{bucket}.s3.{region}.amazonaws.com/{key}
+                const imageKey = `${cameraId}/latest.jpg`;
+                imageUrl = `https://${CONFIG.S3_BUCKET_NAME}.s3.${CONFIG.S3_REGION}.amazonaws.com/${imageKey}?t=${timestamp}`;
+                
+                console.log(`Loading image from S3: ${imageUrl}`);
             }
 
             img.classList.add('loading');

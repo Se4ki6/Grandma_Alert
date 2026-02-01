@@ -8,6 +8,9 @@
 *.tfvars
 certs/
 
+.aws/
+
+package/
 # Python
 .venv/
 __pycache__/

@@ -1,7 +1,8 @@
 # コードレビュー TODO リスト
 
 **レビュー日時:** 2026年1月22日  
-**対象:** S3/Dashboard モジュール
+**最終更新:** 2026年2月1日  
+**対象:** S3/Dashboard モジュール + 署名付きURL実装
 
 ---
 
@@ -24,27 +25,27 @@
 
 #### 実装手順
 
-- [ ] **2.1 S3バケットをプライベート化**
-  - [ ] `s3.tf` の `aws_s3_bucket_public_access_block` を変更
+- [x] **2.1 S3バケットをプライベート化**
+  - [x] `s3.tf` の `aws_s3_bucket_public_access_block` を変更
     ```terraform
     block_public_acls       = true
     block_public_policy     = true
     ignore_public_acls      = true
     restrict_public_buckets = true
     ```
-  - [ ] `aws_s3_bucket_policy.dashboard_public` リソースを削除
+  - [x] `aws_s3_bucket_policy.dashboard_public` リソースを削除
 
-- [ ] **2.2 CloudFront ディストリビューションの作成**
-  - [ ] 新規ファイル `S3/Dashboard/cloudfront.tf` を作成
-  - [ ] Origin Access Control (OAC) の設定
-  - [ ] S3バケットポリシーにCloudFrontからのアクセスのみ許可
-  - [ ] Cache設定（画像は5秒でキャッシュ無効化）
+- [x] **2.2 CloudFront ディストリビューションの作成**
+  - [x] 新規ファイル `S3/Dashboard/cloudfront.tf` を作成
+  - [x] Origin Access Control (OAC) の設定
+  - [x] S3バケットポリシーにCloudFrontからのアクセスのみ許可
+  - [x] Cache設定（画像は5秒でキャッシュ無効化）
 
-- [ ] **2.3 Lambda関数で署名付きURL生成**
-  - [ ] 新規Lambda関数: `GenerateSignedURL`
-  - [ ] CloudFront Key Pair の作成（AWSコンソール → CloudFront → Key management）
-  - [ ] 署名付きURLの有効期限を設定（推奨: 10分〜1時間）
-  - [ ] Lambda実装:
+- [x] **2.3 Lambda関数で署名付きURL生成**
+  - [x] 新規Lambda関数: `GenerateSignedURL`
+  - [ ] CloudFront Key Pair の作成（AWSコンソール → CloudFront → Key management）※手動作業
+  - [x] 署名付きURLの有効期限を設定（推奨: 10分〜1時間）
+  - [x] Lambda実装:
     ```python
     # boto3でCloudFront署名付きURLを生成
     from botocore.signers import CloudFrontSigner
@@ -114,20 +115,22 @@
 
 ### 7. ダッシュボード機能の実装
 
-- [ ] カメラ画像のグリッド表示UI
-- [ ] 5秒ごとの自動画像リフレッシュ機能
-- [ ] エラー時の適切な表示処理
-- [ ] レスポンシブデザイン対応
-- [ ] 画像読み込み失敗時のフォールバック表示
+- [x] カメラ画像のグリッド表示UI
+- [x] 5秒ごとの自動画像リフレッシュ機能
+- [x] エラー時の適切な表示処理
+- [x] レスポンシブデザイン対応
+- [x] 画像読み込み失敗時のフォールバック表示
 - **設計書要件:** 「全カメラのグリッド表示」「5秒ごとの画像リロード処理」
 - **優先度:** 🔴 高
+- **完了日:** 2026年1月下旬
 
 ### 8. エラーページの実装
 
-- [ ] `error.html` の基本的なエラー表示
-- [ ] 404, 403 などの適切なエラーメッセージ
-- [ ] ホームページへの戻りリンク
+- [x] `error.html` の基本的なエラー表示
+- [x] 404, 403 などの適切なエラーメッセージ
+- [x] ホームページへの戻りリンク
 - **優先度:** 🟡 中
+- **完了日:** 2026年1月下旬
 
 ---
 
@@ -143,8 +146,10 @@
 
 ## 🎯 推奨実装順序
 
-1. **フェーズ1:** HTMLファイルの基本実装（問題1, 7, 8）
-2. **フェーズ2:** セキュリティ強化（問題2, 3）
+1. **フェーズ1:** HTMLファイルの基本実装（問題1, 7, 8）✅ **完了**
+2. **フェーズ2:** セキュリティ強化（問題2, 3）🔄 **進行中**
+   - ✅ 2.1-2.3 完了
+   - ⏳ 2.4-2.6 残り作業
 3. **フェーズ3:** 品質改善（問題4, 5, 6）
 
 ---
