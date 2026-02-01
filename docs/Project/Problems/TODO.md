@@ -70,9 +70,10 @@
   - [ ] S3画像URLの代わりに、CloudFront署名付きURLを生成してLINE送信
   - [ ] URLの有効期限をメッセージに明示（例: "10分間有効"）
 
-- [ ] **2.5 Dashboard アクセスの署名付きURL化**
-  - [ ] API Gateway + Lambda でダッシュボード用署名付きURL発行エンドポイント作成
-  - [ ] LINEリッチメニューに「ダッシュボードを開く」ボタン追加
+- [x] **2.5 Dashboard アクセスの署名付きURL化**
+  - [x] Lambda でダッシュボード用署名付きURL発行エンドポイント作成
+  - [x] Lambda Function URL: https://lih3ewzwi2ftx4axh7opridr4q0ktmlr.lambda-url.ap-northeast-1.on.aws/
+  - [ ] LINEリッチメニューに「ダッシュボードを開く」ボタン追加（統合作業）
   - [ ] ボタン押下 → 署名付きURL生成 → リダイレクト
 
 - [ ] **2.6 テスト**
@@ -873,7 +874,7 @@ MissingKey: The specified key does not exist
 | 🔴 高   | 4        | S3/Images パブリックアクセス無効化、署名付きURL移行、カメラリストAPI、Lambda認証、レート制限 |
 | 🟡 中   | 12       | CORS、ログ、エラーハンドリング、Key Group移行、監視、パス規則文書化                          |
 | 🟢 低   | 7        | バリデーション、タグ、キャッシュ最適化、テストコード等                                       |
-| ✅ 完了 | 7        | HTML実装、Lambda署名URL、Secrets Manager設定                                                 |
+| ✅ 完了 | 8        | HTML実装、Lambda署名URL、Secrets Manager設定、Dashboard署名付きURLエンドポイント             |
 
 ---
 
