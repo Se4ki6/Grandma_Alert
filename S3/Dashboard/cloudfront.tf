@@ -4,7 +4,7 @@
 
 # Origin Access Control (OAC) for S3
 resource "aws_cloudfront_origin_access_control" "dashboard" {
-  name                              = "dashboard-oac"
+  name                              = "dashboard-oac-v2"
   description                       = "Origin Access Control for Dashboard S3 bucket"
   origin_access_control_origin_type = "s3"
   signing_behavior                  = "always"

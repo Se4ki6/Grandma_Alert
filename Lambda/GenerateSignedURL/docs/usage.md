@@ -5,6 +5,235 @@
 
 ---
 
+## 目次
+
+1. [概要](#概要)
+2. [仕組みの解説](#仕組みの解説)
+3. [アーキテクチャ](#アーキテクチャ)
+4. [前提条件](#前提条件)
+5. [初期セットアップ](#初期セットアップ)
+6. [Lambda関数のテスト実行](#lambda関数のテスト実行)
+7. [使用方法](#使用方法)
+8. [トラブルシューティング](#トラブルシューティング)
+9. [FAQ（よくある質問）](#faqよくある質問)
+
+---
+
+## 概要
+
+**GenerateSignedURL Lambda関数**は、CloudFront経由でS3バケットに保存されているダッシュボードや画像ファイルへの**一時的かつ安全なアクセス**を提供するためのサービスです。
+
+### 主な機能
+
+- CloudFront署名付きURLの生成
+- 有効期限の設定（1分〜24時間）
+- ワイルドカード対応（`/*`で全ファイルアクセス）
+- HTTPSエンドポイント（Lambda Function URL）
+
+### 使用シーン
+
+1. **ダッシュボードへの認証付きアクセス**
+2. **画像の一時的な共有**
+3. **プライベートコンテンツへの制限付きアクセス**
+
+---
+
+## 仕組みの解説
+
+### CloudFront署名付きURLとは？
+
+CloudFront署名付きURLは、特定の時間だけコンテンツにアクセスできる「期限付きチケット」のようなものです。
+
+**通常のURL（誰でもアクセス可能）:**
+
+```
+https://de4pssyxudete.cloudfront.net/index.html
+```
+
+**署名付きURL（期限内のみアクセス可能）:**
+
+```
+https://de4pssyxudete.cloudfront.net/index.html?Expires=1769929253&Signature=UFk-ldtzr...&Key-Pair-Id=APKAU55MGHO3FZXCUDQA
+```
+
+#### URLパラメータの意味
+
+| パラメータ    | 説明                               | 例                     |
+| ------------- | ---------------------------------- | ---------------------- |
+| `Expires`     | アクセス期限（Unixタイムスタンプ） | `1769929253`           |
+| `Signature`   | CloudFront秘密鍵で生成された署名   | `UFk-ldtzr...`         |
+| `Key-Pair-Id` | CloudFront公開鍵のID               | `APKAU55MGHO3FZXCUDQA` |
+
+### 署名生成の流れ
+
+```
+1. ユーザーがLambda Function URLにリクエスト
+   ↓
+2. Lambda関数がSSMパラメータストアから秘密鍵を取得
+   ↓
+3. 秘密鍵とKey Pair IDでURLに署名
+   ↓
+4. 署名付きURLをユーザーに返す
+   ↓
+5. ユーザーがCloudFrontにアクセス
+   ↓
+6. CloudFrontが公開鍵で署名を検証
+   ↓
+7. 検証成功 → S3からコンテンツを取得して返す
+   検証失敗 → 403 Forbiddenエラー
+```
+
+### セキュリティの仕組み
+
+#### 1. **非対称暗号化（公開鍵・秘密鍵）**
+
+- **秘密鍵**: Lambda関数がSSMに保存（署名生成に使用）
+- **公開鍵**: CloudFrontが保持（署名検証に使用）
+
+→ 秘密鍵を持つLambda関数だけが有効な署名を作れる
+
+#### 2. **時間制限**
+
+- URLには有効期限が埋め込まれる
+- 期限切れ後は自動的に無効化
+
+#### 3. **SSMパラメータストアの暗号化**
+
+- 秘密鍵は`SecureString`として暗号化保存
+- 取得にはIAM権限が必要
+
+#### 4. **IAMロールによるアクセス制御**
+
+```
+Lambda関数 → SSM読み取り権限のみ
+SSMパラメータ → 特定のLambda関数のみアクセス可能
+```
+
+---
+
+## アーキテクチャ
+
+### システム構成図
+
+```
+┌─────────────────┐
+│   ユーザー       │
+└────────┬────────┘
+         │ ① HTTPSリクエスト
+         │ POST /
+         │ {"path": "/index.html"}
+         ↓
+┌─────────────────────────────────┐
+│ Lambda Function URL             │
+│ (認証なし: NONE)                │
+└────────┬────────────────────────┘
+         │
+         │ ② Lambda実行
+         ↓
+┌────────────────────────────────────────┐
+│ GenerateSignedURL Lambda関数            │
+│ ┌────────────────────────────────────┐ │
+│ │ 1. 環境変数から設定取得            │ │
+│ │    - CLOUDFRONT_DOMAIN             │ │
+│ │    - CLOUDFRONT_KEY_PAIR_ID        │ │
+│ │    - PRIVATE_KEY_SSM_PARAM         │ │
+│ │                                    │ │
+│ │ 2. SSMから秘密鍵を取得             │ │
+│ │    ↓                               │ │
+│ │ 3. CloudFrontSignerで署名生成      │ │
+│ │    - URL + 有効期限 → 署名         │ │
+│ └────────────────────────────────────┘ │
+└────────┬───────────────────────────────┘
+         │ ③ SSM読み取り
+         │
+         ↓
+┌────────────────────────────────┐
+│ AWS Systems Manager (SSM)      │
+│ Parameter Store                │
+│ ┌────────────────────────────┐ │
+│ │ /cloudfront/private-key    │ │
+│ │ (SecureString - 暗号化)    │ │
+│ │                            │ │
+│ │ -----BEGIN RSA PRIVATE KEY--│ │
+│ │ MIIEpAIBAAKCAQEA...       │ │
+│ │ -----END RSA PRIVATE KEY----│ │
+│ └────────────────────────────┘ │
+└────────────────────────────────┘
+         │
+         │ ④ 署名付きURL返却
+         ↓
+┌─────────────────┐
+│   ユーザー       │ ⑤ 署名付きURLでアクセス
+└────────┬────────┘
+         │ GET https://de4pssyxudete.cloudfront.net/
+         │     index.html?Expires=...&Signature=...
+         ↓
+┌────────────────────────────────────┐
+│ CloudFront Distribution            │
+│ ┌────────────────────────────────┐ │
+│ │ 1. 署名検証                    │ │
+│ │    - Key Pair IDで公開鍵取得   │ │
+│ │    - 署名が正しいか確認        │ │
+│ │    - 有効期限が切れていないか  │ │
+│ │                                │ │
+│ │ 2. 検証成功 → S3からファイル取得│ │
+│ │    検証失敗 → 403エラー        │ │
+│ └────────────────────────────────┘ │
+└────────┬───────────────────────────┘
+         │ ⑥ S3ファイル取得
+         ↓
+┌────────────────────────────────┐
+│ S3 Bucket: grandma-alert-      │
+│            dashboard-xxxxx     │
+│ ┌────────────────────────────┐ │
+│ │ index.html                 │ │
+│ │ error.html                 │ │
+│ │ /assets/...                │ │
+│ └────────────────────────────┘ │
+└────────────────────────────────┘
+         │
+         │ ⑦ コンテンツ配信
+         ↓
+┌─────────────────┐
+│   ユーザー       │
+└─────────────────┘
+```
+
+### コンポーネントの役割
+
+| コンポーネント          | 役割                    | 技術スタック        |
+| ----------------------- | ----------------------- | ------------------- |
+| **Lambda Function URL** | HTTPSエンドポイント提供 | AWS Lambda          |
+| **Lambda関数**          | 署名付きURL生成ロジック | Python 3.11         |
+| **SSM Parameter Store** | 秘密鍵の安全な保管      | AWS Systems Manager |
+| **CloudFront**          | CDN + 署名検証          | AWS CloudFront      |
+| **S3 Bucket**           | 静的ファイル保管        | AWS S3              |
+| **IAM Role**            | アクセス権限管理        | AWS IAM             |
+
+### データフロー
+
+```
+リクエスト:
+{
+  "path": "/index.html",
+  "expiration_minutes": 60
+}
+      ↓
+Lambda処理:
+- URL作成: https://de4pssyxudete.cloudfront.net/index.html
+- 有効期限: 現在時刻 + 60分
+- 署名生成: RSA-SHA1(URL + 有効期限)
+      ↓
+レスポンス:
+{
+  "signed_url": "https://de4pssyxudete.cloudfront.net/index.html?Expires=...&Signature=...&Key-Pair-Id=...",
+  "expires_at": "2026-02-01T07:56:00",
+  "expires_in_minutes": 60
+}
+```
+
+---
+
 ## 前提条件
 
 ### 必要なツール
@@ -97,6 +326,180 @@ tags = {
 ```
 
 **cloudfront_domainの取得方法:**
+
+```bash
+cd ../../S3/Dashboard
+terraform output cloudfront_domain_name
+```
+
+---
+
+## Lambda関数のテスト実行
+
+デプロイ後、Lambda関数が正常に動作することを確認します。
+
+### 方法1: AWS Consoleでテスト
+
+#### 手順:
+
+1. **AWS Lambda コンソールを開く**
+   - https://console.aws.amazon.com/lambda/
+   - リージョン: ap-northeast-1
+
+2. **関数を選択**
+   - 関数名: `GenerateSignedURL`
+
+3. **テストイベントを作成**
+   - 「テスト」タブをクリック
+   - 「新しいイベント」を選択
+   - イベント名: `test-index-html`
+   - イベントJSON:
+
+   ```json
+   {
+     "path": "/index.html",
+     "expiration_minutes": 60
+   }
+   ```
+
+4. **テストを実行**
+   - 「テスト」ボタンをクリック
+   - 実行結果を確認
+
+#### 期待される結果:
+
+```json
+{
+  "statusCode": 200,
+  "headers": {
+    "Content-Type": "application/json",
+    "Access-Control-Allow-Origin": "*"
+  },
+  "body": "{\"signed_url\":\"https://de4pssyxudete.cloudfront.net/index.html?Expires=...\",\"expires_at\":\"2026-02-01T12:00:00\",\"expires_in_minutes\":60}"
+}
+```
+
+### 方法2: AWS CLIでテスト
+
+#### 基本テスト（index.htmlの署名付きURL生成）:
+
+```bash
+aws lambda invoke \
+  --function-name GenerateSignedURL \
+  --payload '{"path": "/index.html", "expiration_minutes": 60}' \
+  --region ap-northeast-1 \
+  --profile default \
+  response.json
+
+# 結果を確認
+cat response.json
+```
+
+#### ワイルドカードテスト（全ファイルアクセス可能な署名付きURL）:
+
+```bash
+aws lambda invoke \
+  --function-name GenerateSignedURL \
+  --payload '{"path": "/*", "expiration_minutes": 120}' \
+  --region ap-northeast-1 \
+  --profile default \
+  response.json
+
+cat response.json
+```
+
+### 方法3: Lambda Function URLでテスト
+
+デプロイ後に自動生成されるHTTPSエンドポイントを使用します。
+
+#### Function URLの取得:
+
+```bash
+cd Lambda/GenerateSignedURL
+terraform output lambda_function_url
+```
+
+出力例: `https://abcd1234efgh5678.lambda-url.ap-northeast-1.on.aws/`
+
+#### curlでテスト:
+
+```bash
+curl -X POST "https://lih3ewzwi2ftx4axh7opridr4q0ktmlr.lambda-url.ap-northeast-1.on.aws/" \
+  -H "Content-Type: application/json" \
+  -d '{"path": "/index.html", "expiration_minutes": 60}'
+```
+
+#### PowerShellでテスト:
+
+```powershell
+$url = "https://lih3ewzwi2ftx4axh7opridr4q0ktmlr.lambda-url.ap-northeast-1.on.aws/"
+$body = @{
+    path = "/index.html"
+    expiration_minutes = 60
+} | ConvertTo-Json
+
+Invoke-RestMethod -Uri $url -Method Post -Body $body -ContentType "application/json"
+```
+
+### 方法4: 生成された署名付きURLをブラウザでテスト
+
+1. 上記のいずれかの方法で署名付きURLを生成
+2. レスポンスから`signed_url`をコピー
+3. ブラウザのアドレスバーに貼り付けてアクセス
+4. CloudFrontのダッシュボード（index.html）が表示されることを確認
+
+---
+
+## トラブルシューティング
+
+### エラー: "Failed to generate signed URL"
+
+**原因:**
+
+- SSMパラメータストアに秘密鍵が保存されていない
+- Lambda IAMロールにSSM読み取り権限がない
+- CloudFront Key Pair IDが間違っている
+
+**解決策:**
+
+```bash
+# SSMパラメータを確認
+aws ssm get-parameter --name "/cloudfront/private-key" --with-decryption --region ap-northeast-1
+
+# Lambda関数の環境変数を確認
+aws lambda get-function-configuration --function-name GenerateSignedURL --region ap-northeast-1
+```
+
+### エラー: "No valid credential sources found"
+
+**原因:** AWS認証情報が設定されていない
+
+**解決策:**
+
+```bash
+# AWS CLIの設定
+aws configure --profile default
+
+# または環境変数で設定
+export AWS_ACCESS_KEY_ID="your-access-key"
+export AWS_SECRET_ACCESS_KEY="your-secret-key"
+export AWS_DEFAULT_REGION="ap-northeast-1"
+```
+
+### 署名付きURLにアクセスすると403エラー
+
+**原因:**
+
+- CloudFrontディストリビューションに信頼されたキーグループが設定されていない
+- Key Pair IDが一致していない
+
+**解決策:**
+
+1. S3/Dashboardのcloudfront.tfを確認
+2. `trusted_key_groups`が正しく設定されているか確認
+3. terraform applyでCloudFrontを再デプロイ
+
+---
 
 ```bash
 # S3/Dashboardディレクトリで実行
@@ -763,11 +1166,139 @@ aws ssm get-parameter --name "/cloudfront/private-key"
 
 ---
 
+## FAQ（よくある質問）
+
+### Q1: 署名付きURLは再利用できますか？
+
+**A:** はい、有効期限内であれば何度でも使用可能です。ただし、URLを共有すると誰でもアクセスできるため注意が必要です。
+
+### Q2: 有効期限を過ぎたURLはどうなりますか？
+
+**A:** CloudFrontが`403 Forbidden`エラーを返します。新しい署名付きURLを生成してください。
+
+### Q3: Lambda関数のコールドスタートはどのくらいですか？
+
+**A:** 初回実行時は約600-700ms、その後は100-200ms程度です。SSMパラメータ取得は初回のみで、その後はメモリにキャッシュされます。
+
+### Q4: 複数のファイルに同時にアクセスしたい場合は？
+
+**A:** `path`パラメータに`/*`を指定すると、ワイルドカードで全ファイルにアクセス可能な署名付きURLが生成されます。
+
+```powershell
+$body = @{
+    path = "/*"
+    expiration_minutes = 30
+} | ConvertTo-Json
+
+Invoke-RestMethod -Uri $url -Method Post -Body $body -ContentType "application/json"
+```
+
+### Q5: CloudFront Key Pairは何個まで作れますか？
+
+**A:** AWSアカウントごとに**2つ**までです。ルートユーザーのみ作成可能です。
+
+### Q6: 秘密鍵をローテーションする頻度は？
+
+**A:** セキュリティベストプラクティスとして、**90日〜180日**ごとの定期的なローテーションを推奨します。
+
+### Q7: Lambda Function URLは誰でもアクセスできてしまいますか？
+
+**A:** はい、現在は`authorization_type = "NONE"`のため誰でもアクセス可能です。本番環境では以下の対策を推奨：
+
+- API Gateway + Cognito認証
+- Lambda Function URLのIAM認証
+- WAF（Web Application Firewall）の導入
+
+### Q8: 署名付きURLのサイズ制限は？
+
+**A:** URLは通常2000文字以内に収まります。ブラウザの制限（約2048文字）を超えることはほぼありません。
+
+### Q9: Lambda関数のコストはどのくらいですか？
+
+**A:**
+
+- **リクエスト料金**: $0.20 / 100万リクエスト
+- **実行時間料金**: $0.0000166667 / GB秒
+- **月1,000回実行の場合**: 約 **$0.01以下**（ほぼ無料）
+
+### Q10: SSMパラメータストアの料金は？
+
+**A:**
+
+- **Standard パラメータ**: 無料（10,000個まで）
+- **取得API呼び出し**: $0.05 / 10,000回
+- **このプロジェクトでは実質無料**
+
+### Q11: cryptographyライブラリのエラーが出る場合は？
+
+**A:** Windowsでビルドしたパッケージは、Lambda（Linux環境）では動作しません。`lambda.tf`で以下のオプションを指定してください：
+
+```bash
+pip install -r requirements.txt -t package/ --platform manylinux2014_x86_64 --only-binary=:all: --python-version 3.11
+```
+
+### Q12: 署名付きURLをキャッシュしても良いですか？
+
+**A:** はい、有効期限内であればキャッシュ推奨です。以下の方法があります：
+
+- **ブラウザ**: LocalStorage / SessionStorage
+- **サーバー**: Redis / DynamoDB
+- **注意**: 期限切れチェックを実装してください
+
+### Q13: CloudFront Key Pairを削除するとどうなりますか？
+
+**A:** **既存の署名付きURLは全て無効**になり、403エラーになります。新しいKey Pairを作成して再デプロイが必要です。
+
+### Q14: 特定のIPアドレスからのみアクセスさせたい場合は？
+
+**A:** CloudFront署名付きURLには「カスタムポリシー」を使用します。以下のパラメータを追加：
+
+```python
+# lambda_function.py で実装
+cloudfront_signer.generate_presigned_url(
+    url,
+    date_less_than=expire_date,
+    policy={
+        "IpAddress": {"AWS:SourceIp": "203.0.113.0/24"}
+    }
+)
+```
+
+### Q15: Lambda関数のログはどこで確認できますか？
+
+**A:** CloudWatch Logsで確認できます：
+
+```bash
+aws logs tail /aws/lambda/GenerateSignedURL --follow \
+  --region ap-northeast-1 \
+  --profile "AdministratorAccess-339126664118"
+```
+
+または、AWSコンソール → CloudWatch → ロググループ → `/aws/lambda/GenerateSignedURL`
+
+---
+
 ## 次のステップ
 
-1. **認証機能の追加** → [issues.md](issues.md) の問題1参照
-2. **モニタリングの設定** → [issues.md](issues.md) の問題10参照
-3. **テストコードの作成** → [issues.md](issues.md) の問題11参照
+1. **認証機能の追加** → API Gateway + Cognitoの統合
+2. **モニタリングの設定** → CloudWatch Dashboard作成
+3. **テストコードの作成** → Pytestでユニットテスト
+4. **CI/CDパイプライン** → GitHub Actions / AWS CodePipeline
+
+---
+
+## 用語集
+
+| 用語                    | 説明                                                        |
+| ----------------------- | ----------------------------------------------------------- |
+| **CloudFront**          | AWSのCDN（コンテンツ配信ネットワーク）                      |
+| **署名付きURL**         | 有効期限とアクセス制限を持つ一時的なURL                     |
+| **SSM Parameter Store** | AWS Systems Managerの機密情報管理サービス                   |
+| **Lambda Function URL** | Lambda関数に直接HTTPSアクセスできる機能                     |
+| **Key Pair**            | 公開鍵と秘密鍵のペア（非対称暗号化）                        |
+| **IAM Role**            | AWSリソースへのアクセス権限を定義                           |
+| **Terraform**           | インフラをコードで管理するツール（IaC）                     |
+| **CORS**                | Cross-Origin Resource Sharing（異なるドメイン間の通信許可） |
 
 ---
 
@@ -778,3 +1309,7 @@ aws ssm get-parameter --name "/cloudfront/private-key"
 - [GitHub Issues](https://github.com/your-repo/issues)
 - プロジェクトドキュメント: [docs/](../../../docs/)
 - S3 Dashboard実装: [S3/Dashboard/docs/](../../../S3/Dashboard/docs/)
+
+---
+
+**最終更新日:** 2026年2月1日

@@ -15,12 +15,13 @@ resource "null_resource" "pip_install" {
   }
 
   provisioner "local-exec" {
-    command = <<-EOT
-      rm -rf ${path.module}/package
-      mkdir -p ${path.module}/package
-      pip install -r ${path.module}/requirements.txt -t ${path.module}/package/
-      cp ${path.module}/lambda_function.py ${path.module}/package/
+    command     = <<-EOT
+      if (Test-Path package) { Remove-Item -Recurse -Force package }
+      New-Item -ItemType Directory -Force -Path package | Out-Null
+      pip install -r requirements.txt -t package/ --platform manylinux2014_x86_64 --only-binary=:all: --python-version 3.11
+      Copy-Item lambda_function.py package/
     EOT
+    interpreter = ["PowerShell", "-Command"]
   }
 }
 
