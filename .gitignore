@@ -7,3 +7,6 @@
 .terraform.lock.hcl
 *.tfvars
 certs/
+
+# Python
+.venv/
