@@ -33,3 +33,16 @@ variable "tags" {
     ManagedBy = "Terraform"
   }
 }
+
+// ---------------------------------------------
+// Lambda関連
+// ---------------------------------------------
+variable "line_notification_lambda_arn" {
+  description = "LINE通知用Lambda関数のARN"
+  type        = string
+}
+
+variable "line_notification_lambda_name" {
+  description = "LINE通知用Lambda関数の名前"
+  type        = string
+}

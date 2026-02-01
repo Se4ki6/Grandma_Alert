@@ -11,3 +11,5 @@ certs/
 .aws/
 
 package/
+# Python
+.venv/
