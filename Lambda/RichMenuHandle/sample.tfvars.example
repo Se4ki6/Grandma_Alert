@@ -1,0 +1,10 @@
+profile                  = "your-aws-profile"
+region                   = "ap-northeast-1"
+stage_name               = "prod"
+line_channel_access_token = "YOUR_LINE_CHANNEL_ACCESS_TOKEN"
+# 代わりにユーザーIDも使用可能
+group_id                 = "Gxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+report_name              = "山田太郎"
+report_address           = "東京都新宿区1-2-3"
+report_disease           = "高血圧"
+

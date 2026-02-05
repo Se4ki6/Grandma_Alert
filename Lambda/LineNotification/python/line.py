@@ -21,6 +21,7 @@ logger.setLevel(logging.INFO)
 # Trueにすると、.envファイルから環境変数を読み込みます
 isLocal = False
 if isLocal:
+        # rich_menuをcwdとすることで、同階層の.envを読み込む
         from dotenv import load_dotenv
         load_dotenv()
 
@@ -63,7 +64,7 @@ def lambda_handler(event, context):
     try:
         logger.info("LINE APIへリクエストを送信します")
         with urllib.request.urlopen(req) as res:
-            body = res.read().decode("utf-8")
+            _body = res.read().decode("utf-8")
             logger.info(f"レスポンスステータスコード: {res.status}")
             logger.info("メッセージ送信成功")
             return {

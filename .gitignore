@@ -13,3 +13,7 @@ certs/
 package/
 # Python
 .venv/
+__pycache__/
+
+# ETC
+.DS_Store
