@@ -46,3 +46,9 @@ variable "line_notification_lambda_name" {
   description = "LINE通知用Lambda関数の名前"
   type        = string
 }
+
+variable "dashboard_cloudfront_domain" {
+  description = "Dashboard用CloudFrontドメイン（CORS許可用）"
+  type        = string
+  default     = "d2zaynqig5sahs.cloudfront.net"
+}

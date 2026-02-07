@@ -52,7 +52,10 @@ resource "aws_s3_bucket_cors_configuration" "images" {
   cors_rule {
     allowed_headers = ["*"]
     allowed_methods = ["GET", "HEAD"]
-    allowed_origins = ["*"] // テスト用。本番環境ではCloudFrontドメインに限定
+    allowed_origins = [
+      "https://${aws_cloudfront_distribution.images.domain_name}", // Images用CloudFront
+      "https://${var.dashboard_cloudfront_domain}"                 // Dashboard用CloudFront（署名付きURLでも動作）
+    ]
     expose_headers  = ["ETag"]
     max_age_seconds = 3000
   }
@@ -64,32 +67,37 @@ resource "aws_s3_bucket_cors_configuration" "images" {
 resource "aws_s3_bucket_public_access_block" "images" {
   bucket = aws_s3_bucket.images.id
 
-  block_public_acls       = false // テスト用。本番環境ではtrue推奨
-  block_public_policy     = false // テスト用。本番環境ではtrue推奨
-  ignore_public_acls      = false // テスト用。本番環境ではtrue推奨
-  restrict_public_buckets = false // テスト用。本番環境ではtrue推奨
+  block_public_acls       = true
+  block_public_policy     = true
+  ignore_public_acls      = true
+  restrict_public_buckets = true
 }
 
 // ---------------------------------------------
-// バケットポリシー（読み取り専用パブリックアクセス）
+// バケットポリシー（CloudFrontからの読み取り専用アクセス）
 // ---------------------------------------------
-resource "aws_s3_bucket_policy" "images_public_read" {
+resource "aws_s3_bucket_policy" "images_cloudfront_only" {
   bucket = aws_s3_bucket.images.id
 
   policy = jsonencode({
     Version = "2012-10-17"
     Statement = [
       {
-        Sid       = "PublicReadGetObject"
-        Effect    = "Allow"
-        Principal = "*"
-        Action    = "s3:GetObject"
-        Resource  = "${aws_s3_bucket.images.arn}/*"
+        Sid    = "AllowCloudFrontServicePrincipal"
+        Effect = "Allow"
+        Principal = {
+          Service = "cloudfront.amazonaws.com"
+        }
+        Action   = "s3:GetObject"
+        Resource = "${aws_s3_bucket.images.arn}/*"
+        Condition = {
+          StringEquals = {
+            "AWS:SourceArn" = aws_cloudfront_distribution.images.arn
+          }
+        }
       }
     ]
   })
-
-  depends_on = [aws_s3_bucket_public_access_block.images]
 }
 
 // ---------------------------------------------
