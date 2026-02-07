@@ -1,7 +1,16 @@
 import threading
+from enum import Enum, auto
 
+
+class Status(Enum):
+    """システムの状態を表すEnum"""
+    MONITORING = auto()  # 通常監視中
+    ALERT = auto()       # アラート状態
+
+
+# Observerパターンを用いた状態管理クラス
 class StateManager:
-    def __init__(self, initial_state="monitoring"):
+    def __init__(self, initial_state: Status = Status.MONITORING):
         self._status = initial_state
         self._lock = threading.Lock()
         self._listeners = [] # 変更を通知する相手リスト
@@ -12,9 +21,17 @@ class StateManager:
         with self._lock:
             return self._status
 
+
     def add_listener(self, callback):
         """状態が変わった時に呼んでほしい関数を登録する"""
-        self._listeners.append(callback)
+        with self._lock:
+            self._listeners.append(callback)
+        
+    def remove_listener(self, callback):
+        """登録されたリスナーを解除する（メモリリーク防止）"""
+        with self._lock:
+            if callback in self._listeners:
+                self._listeners.remove(callback)
 
     def update(self, new_status):
         """ステータスを更新する (変更があった場合のみ通知)"""
@@ -27,6 +44,7 @@ class StateManager:
         
         # ロックを解放してから通知 (デッドロック防止)
         self._notify(new_status)
+        
 
     def _notify(self, new_status):
         """登録されたリスナー全員に知らせる"""
