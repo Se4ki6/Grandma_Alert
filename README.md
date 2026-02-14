@@ -17,7 +17,7 @@
 - 全体設計: [docs/Design.md](docs/Design.md)
 - 要件/ロードマップ: [docs/RDD.md](docs/RDD.md)
 
-## 3. 現在の進捗（2026/01/22時点）
+## 3. 現在の進捗（2026/02/01時点）
 
 ### ✅ 完了
 
@@ -29,21 +29,31 @@
   - Thing作成: `ElderlyCam_01`
   - 証明書発行 & ダウンロード
   - IoT Policy作成 & アタッチ
+- S3バケット作成
+  - Images Bucket（画像保存用）
+  - Dashboard Bucket（静的Webホスティング用）
+- CloudFront ディストリビューション
+  - OAC設定済み
+  - 署名付きURL対応
+- Lambda関数
+  - GenerateSignedURL（署名付きURL生成）
+  - FetchGroupID（Group ID取得）
+- AWS Secrets Manager
+  - 通報情報の安全な格納（名前、住所、病歴）
+  - Lambda関数からのアクセス設定
 
-### ⏳ 一部未完（値の埋め込み待ち）
+### ⏳ 一部未完（実装待ち）
 
-- Channel Access Token の記録
-- LINE `groupId` の確定
-- IoT Core Endpoint の確定
+- Lambda（通知処理 / コマンド処理）
+- LINEリッチメニュー実装
+- Raspberry Piアプリ実装
 
 ### 🔜 未着手（これからの主要タスク）
 
-- S3バケット作成（画像保存 + Webホスティング）
-- DynamoDB作成（通報テンプレート格納）
 - RasPi側アプリ実装（MQTT/撮影/アップロード）
 - Lambda（通知/コマンド処理）
 - LINEリッチメニュー実装
-- Webダッシュボード作成
+- Webダッシュボード機能強化
 
 ## 4. リポジトリ構成
 
@@ -97,10 +107,10 @@ SSO利用時は、CLIプロファイルを指定して作業します（例: `$A
 
 ## 7. TODO一覧（現状の抜粋）
 
-詳細は [docs/RDD.md](docs/RDD.md) を参照してください。
+詳細は [docs/Project/Design/RDD.md](docs/Project/Design/RDD.md) を参照してください。
 
-- S3バケット作成 & ライフサイクル設定
-- DynamoDB `EmergencyInfo` 作成
+- ~~S3バケット作成 & ライフサイクル設定~~ ✅ 完了
+- ~~Secrets Manager設定~~ ✅ 完了（DynamoDBから方針変更）
 - RasPi: MQTT + Shadow監視 + 撮影/S3アップロード
 - Lambda: S3トリガー → LINE通知
 - Lambda: LINE Webhook → Shadow更新/通報テンプレ送信

@@ -24,9 +24,9 @@
 ## 🥧 Phase 2: エッジデバイス (Raspberry Pi)
 
 - [ ] **OS & 基本設定**
-  - [ ] Raspberry Pi OS (Lite推奨) インストール
-  - [ ] SSH接続有効化 & Wi-Fi設定
-  - [ ] 固定IP化 (ルーター側設定推奨)
+  - [x] Raspberry Pi OS (Lite推奨) インストール
+  - [x] SSH接続有効化 & Wi-Fi設定
+  - [x] 固定IP化 (ルーター側設定推奨)
 - [ ] **Python環境構築**
   - [ ] 必要なライブラリのインストール
     - `pip install awsiotsdk boto3 opencv-python RPi.GPIO`

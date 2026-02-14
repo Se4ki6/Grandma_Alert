@@ -1,6 +1,6 @@
 # Grandma Alert プロジェクト - TODO リスト
 
-**最終更新:** 2026年1月23日  
+**最終更新:** 2026年2月1日  
 **管理対象モジュール:** 全モジュール
 
 ---
@@ -8,8 +8,11 @@
 ## 📋 目次
 
 1. [S3/Dashboard モジュール](#s3dashboard-モジュール)
-2. [Lambda/GenerateSignedURL モジュール](#lambdageneratesignedurl-モジュール)
-3. [全体的な実装順序](#全体的な実装順序)
+2. [S3/Images モジュール](#s3images-モジュール)
+3. [ダッシュボード ↔ S3/Images 連携](#ダッシュボード--s3images-連携)
+4. [Lambda/GenerateSignedURL モジュール](#lambdageneratesignedurl-モジュール)
+5. [Secrets Manager モジュール](#secrets-manager-モジュール)
+6. [全体的な実装順序](#全体的な実装順序)
 
 ---
 
@@ -67,9 +70,10 @@
   - [ ] S3画像URLの代わりに、CloudFront署名付きURLを生成してLINE送信
   - [ ] URLの有効期限をメッセージに明示（例: "10分間有効"）
 
-- [ ] **2.5 Dashboard アクセスの署名付きURL化**
-  - [ ] API Gateway + Lambda でダッシュボード用署名付きURL発行エンドポイント作成
-  - [ ] LINEリッチメニューに「ダッシュボードを開く」ボタン追加
+- [x] **2.5 Dashboard アクセスの署名付きURL化**
+  - [x] Lambda でダッシュボード用署名付きURL発行エンドポイント作成
+  - [x] Lambda Function URL: https://lih3ewzwi2ftx4axh7opridr4q0ktmlr.lambda-url.ap-northeast-1.on.aws/
+  - [ ] LINEリッチメニューに「ダッシュボードを開く」ボタン追加（統合作業）
   - [ ] ボタン押下 → 署名付きURL生成 → リダイレクト
 
 - [ ] **2.6 テスト**
@@ -158,6 +162,192 @@
 
 ---
 
+# S3/Images モジュール
+
+**作成日:** 2026年2月1日
+
+## 🚨 重大な問題（本番環境前に対応必須）
+
+### 1. パブリックアクセスの無効化
+
+- [ ] `S3/Images/s3.tf` の `aws_s3_bucket_public_access_block` を変更
+  ```terraform
+  block_public_acls       = true   # false → true
+  block_public_policy     = true   # false → true
+  ignore_public_acls      = true   # false → true
+  restrict_public_buckets = true   # false → true
+  ```
+- [ ] `aws_s3_bucket_policy.images_public_read` を削除または制限
+- [ ] 代替アクセス方式の実装（署名付きURLまたはCloudFront OAC）
+- **現状:** テスト用にパブリックアクセスが有効
+- **影響:** 画像URLを知っている人は誰でもアクセス可能
+- **優先度:** 🔴 高
+- **関連:** [Issues.md](Issues.md#-問題1-パブリックアクセスが有効テスト用設定のまま) - S3/Images - 問題1
+
+### 2. CORS設定の厳格化
+
+- [ ] `allowed_origins` をCloudFrontドメインに限定
+  ```terraform
+  allowed_origins = [
+    "https://d2zaynqig5sahs.cloudfront.net",
+    "https://<your-domain>.com"
+  ]
+  ```
+- **現状:** `allowed_origins = ["*"]` で全ドメインを許可
+- **優先度:** 🟡 中
+- **関連:** [Issues.md](Issues.md#-問題2-cors設定が過度に緩い-1) - S3/Images - 問題2
+
+---
+
+## ✅ S3/Images - 良好な実装（維持）
+
+- ✓ バケットバージョニングが有効
+- ✓ サーバーサイド暗号化（AES256）が設定済み
+- ✓ ライフサイクルポリシーで古い画像を自動削除
+- ✓ Lambda通知用のS3イベント設定済み
+
+---
+
+# ダッシュボード ↔ S3/Images 連携
+
+**作成日:** 2026年2月1日  
+**対象ファイル:** `S3/Dashboard/upload_file/index.html`
+
+## 🚨 重大な問題（機能が未完成）
+
+### 1. 署名付きURL方式への移行
+
+- [ ] `CONFIG.LAMBDA_SIGNED_URL_ENDPOINT` にLambda URLを設定
+  ```javascript
+  LAMBDA_SIGNED_URL_ENDPOINT: 'https://lih3ewzwi2ftx4axh7opridr4q0ktmlr.lambda-url.ap-northeast-1.on.aws/',
+  ```
+- [ ] `loadCameraImage()` 関数で署名付きURLを使用するように変更
+- [ ] S3直接アクセスからの移行テスト
+- **現状:** S3バケットに直接アクセス（パブリック読み取り）
+- **影響:** セキュリティリスク、S3バケットをパブリックにする必要がある
+- **優先度:** 🔴 高
+- **関連:** [Issues.md](Issues.md#-問題3-s3直接アクセス方式のセキュリティリスク) - ダッシュボード連携 - 問題3
+
+### 2. カメラリスト取得APIの実装
+
+- [ ] Lambda関数 `ListCameras` の作成
+  - [ ] S3 `listObjectsV2()` でカメラIDフォルダを取得
+  - [ ] API GatewayまたはLambda Function URLの設定
+- [ ] `loadCamerasFromS3()` 関数の実装
+  ```javascript
+  async function loadCamerasFromS3() {
+    const response = await fetch(CONFIG.LIST_CAMERAS_ENDPOINT);
+    const data = await response.json();
+    cameras = data.cameras;
+  }
+  ```
+- [ ] `index.html` に `LIST_CAMERAS_ENDPOINT` 設定を追加
+- **現状:** `loadCamerasFromS3()` はデモデータ(`DEMO_CAMERAS`)にフォールバック
+- **影響:** IoTデバイスから動的にアップロードされた画像を検出できない
+- **優先度:** 🔴 高
+- **関連:** [Issues.md](Issues.md#-問題1-カメラリスト取得機能が未実装) - ダッシュボード連携 - 問題1
+
+### 3. 画像パス規則の文書化と標準化
+
+- [ ] IoTデバイス側とのパス規則を合意
+- [ ] 標準パス規則をドキュメント化
+  ```
+  {camera_id}/
+  ├── latest.jpg           # 最新画像（常に上書き）
+  ├── 2026/02/01/          # 履歴画像（オプション）
+  │   ├── 10-30-00.jpg
+  │   └── ...
+  ```
+- [ ] `index.html` のコメントに規則を記載
+- **現状:** `{camera_id}/latest.jpg` を想定しているが未文書化
+- **優先度:** 🟡 中
+- **関連:** [Issues.md](Issues.md#-問題2-画像パス規則の未文書化) - ダッシュボード連携 - 問題2
+
+### 4. エラーハンドリングの改善
+
+- [ ] エラー種別に応じたメッセージ表示（403, 404等）
+- [ ] リトライボタンの追加
+- [ ] コンソールログの充実
+- **優先度:** 🟢 低
+- **関連:** [Issues.md](Issues.md#-問題4-画像取得エラー時のフォールバック処理が不十分) - ダッシュボード連携 - 問題4
+
+---
+
+## 📋 実装手順
+
+### ステップ1: 署名付きURL方式への移行
+
+1. `index.html` の `CONFIG.LAMBDA_SIGNED_URL_ENDPOINT` を設定
+2. `loadCameraImage()` 関数を修正（署名付きURL使用）
+3. S3 Images バケットのパブリックアクセスを無効化
+4. 動作確認
+
+### ステップ2: カメラリスト取得APIの実装
+
+1. Lambda関数 `ListCameras` を作成
+2. Lambda Function URLを設定
+3. `index.html` の `loadCamerasFromS3()` を実装
+4. 動作確認
+
+---
+
+## ✅ ダッシュボード連携 - 良好な実装（維持）
+
+- ✓ 5秒ごとの自動リフレッシュ機能
+- ✓ タイムスタンプ付与によるキャッシュバスター
+- ✓ 画像読み込み失敗時の基本的なフォールバック表示
+- ✓ レスポンシブデザイン対応
+- ✓ 署名付きURL取得関数のフレームワーク準備済み
+
+---
+
+# Secrets Manager モジュール
+
+**作成日:** 2026年2月1日  
+**対象モジュール:** `SecretsManager/`
+
+## ✅ Secrets Manager - 完了項目
+
+- ✓ シークレット作成（LineRichMenu）
+- ✓ 通報情報の格納（名前、住所、病歴）
+- ✓ リソースポリシー設定
+- ✓ Lambda関数からのアクセス許可設定
+- ✓ Terraformによる管理
+
+## 📋 設計方針
+
+### DynamoDBからSecrets Managerへの移行理由
+
+1. **セキュリティ強化**
+   - KMS暗号化による保護
+   - IAMポリシーによるきめ細かいアクセス制御
+   - 監査ログ（CloudTrail）
+
+2. **コスト最適化**
+   - DynamoDB: $0.25/GB/月 + 読み取り/書き込みコスト
+   - Secrets Manager: $0.40/シークレット/月（少量データに最適）
+
+3. **運用簡素化**
+   - 単一のシークレットで通報情報を管理
+   - バージョン管理機能
+   - 自動ローテーション（将来対応可能）
+
+## 🔧 改善提案（品質向上）
+
+### 1. シークレットのローテーション設定
+
+- [ ] 自動ローテーションの設定
+- [ ] ローテーションLambda関数の作成
+- **優先度:** 🟢 低
+
+### 2. 複数環境対応
+
+- [ ] 環境別シークレット（dev/staging/prod）
+- [ ] 命名規則の統一
+- **優先度:** 🟢 低
+
+---
+
 # Lambda/GenerateSignedURL モジュール
 
 **作成日:** 2026年1月23日
@@ -168,17 +358,16 @@
 1. ✅ S3/Dashboard デプロイ
    └─ CloudFront Distribution: d2zaynqig5sahs.cloudfront.net
 
-2. ⏸️  ダッシュボードの修正・確認（現在ここ）
+2. ✅ Lambda関数デプロイ完了
+   └─ Lambda Function URL: https://lih3ewzwi2ftx4axh7opridr4q0ktmlr.lambda-url.ap-northeast-1.on.aws/
 
-3. ⬜ CloudFront Key Pair作成（ルートユーザー）
+3. ✅ CloudFront Key Pair作成（ルートユーザー）
 
-4. ⬜ SSMに秘密鍵保存
+4. ✅ SSMに秘密鍵保存
 
-5. ⬜ Lambda/GenerateSignedURL デプロイ
+5. ⬜ CloudFront署名検証設定
 
-6. ⬜ CloudFront署名検証設定
-
-7. ⬜ 動作確認・テスト
+6. ⬜ 動作確認・テスト
 ```
 
 ---
@@ -192,18 +381,15 @@
 - [x] ダッシュボードHTML実装
 - [x] Lambda関数コード実装
 - [x] Terraform設定ファイル作成
+- [x] Lambda関数デプロイ
+- [x] CloudFront Key Pair作成
+- [x] SSMパラメータストアへの秘密鍵保存
 
-### ⏸️ 保留中（ダッシュボード修正中）
-
-現在はダッシュボードの動作確認と修正を優先しています。
+### ⏸️ 保留中（署名検証設定待ち）
 
 **確認URL:** https://d2zaynqig5sahs.cloudfront.net
 
-**確認項目:**
-
-- [ ] ダッシュボードが正しく表示されるか
-- [ ] レイアウトが崩れていないか
-- [ ] 必要な機能が動作するか
+**Lambda URL:** https://lih3ewzwi2ftx4axh7opridr4q0ktmlr.lambda-url.ap-northeast-1.on.aws/
 
 ---
 
@@ -614,54 +800,81 @@ MissingKey: The specified key does not exist
 
 #### Lambda/GenerateSignedURL:
 
-2. ⬜ **依存ライブラリのデプロイ修正**（問題1）
-3. ⬜ **CloudFront Key Pair作成とSSM保存**（手順1-2）
-4. ⬜ **Lambda関数デプロイ**（手順3-4）
+2. ✅ **依存ライブラリのデプロイ修正**（問題1）- 完了
+3. ✅ **CloudFront Key Pair作成とSSM保存**（手順1-2）- 完了
+4. ✅ **Lambda関数デプロイ**（手順3-4）- 完了
 5. ⬜ **CloudFront署名検証設定**（手順5）
 6. ⬜ **動作確認・テスト**（手順6）
 
+#### Secrets Manager:
+
+7. ✅ **シークレット作成（LineRichMenu）** - 完了
+8. ✅ **通報情報の格納（名前、住所、病歴）** - 完了
+9. ✅ **Lambda関数からのアクセス許可設定** - 完了
+
+#### ダッシュボード ↔ S3/Images 連携:
+
+10. ⬜ **署名付きURL方式への移行**（ダッシュボード連携 - 問題1）
+    - `CONFIG.LAMBDA_SIGNED_URL_ENDPOINT` を設定
+    - `loadCameraImage()` 関数を修正
+11. ⬜ **カメラリスト取得APIの実装**（ダッシュボード連携 - 問題2）
+    - Lambda関数 `ListCameras` を作成
+    - `loadCamerasFromS3()` 関数を実装
+
 ### フェーズ2: セキュリティ強化（本番環境前に対応）
+
+#### S3/Images:
+
+9. ⬜ **パブリックアクセスの無効化**（S3/Images - 問題1） 🔴 最優先
+   - `block_public_acls` 等を `true` に変更
+   - パブリックポリシーを削除
 
 #### 共通:
 
-7. ⬜ **Lambda Function URLの認証追加**（Lambda - 問題2）
-8. ⬜ **レート制限の実装**（Lambda - 問題3）
-9. ⬜ **CORS設定の厳格化**（S3 - 問題3、Lambda - 問題4）
+10. ⬜ **Lambda Function URLの認証追加**（Lambda - 問題2）
+11. ⬜ **レート制限の実装**（Lambda - 問題3）
+12. ⬜ **CORS設定の厳格化**（S3/Dashboard, S3/Images, Lambda）
 
 #### S3/Dashboard:
 
-10. ⬜ **アクセスログの設定**（S3 - 問題3）
+13. ⬜ **アクセスログの設定**（S3 - 問題3）
 
 ### フェーズ3: 品質向上（1ヶ月以内）
 
+#### ダッシュボード連携:
+
+14. ⬜ **画像パス規則の文書化と標準化**（ダッシュボード連携 - 問題3）
+15. ⬜ **エラーハンドリングの改善**（ダッシュボード連携 - 問題4）
+
 #### S3/Dashboard:
 
-11. ⬜ **バリデーション機能の追加**（S3 - 問題4）
-12. ⬜ **タグ管理の統一**（S3 - 問題5）
-13. ⬜ **エラーハンドリングの強化**（S3 - 問題6）
-14. ⬜ **キャッシュ戦略の最適化**（S3 - 問題7）
+16. ⬜ **バリデーション機能の追加**（S3 - 問題4）
+17. ⬜ **タグ管理の統一**（S3 - 問題5）
+18. ⬜ **エラーハンドリングの強化**（S3 - 問題6）
+19. ⬜ **キャッシュ戦略の最適化**（S3 - 問題7）
 
 #### Lambda/GenerateSignedURL:
 
-15. ⬜ **エラーハンドリングの改善**（Lambda - 問題5）
-16. ⬜ **ロギングの強化**（Lambda - 問題6）
-17. ⬜ **CloudFront Key Groupへの移行**（Lambda - 問題7）
-18. ⬜ **コールドスタート対策**（Lambda - 問題8）
+20. ⬜ **エラーハンドリングの改善**（Lambda - 問題5）
+21. ⬜ **ロギングの強化**（Lambda - 問題6）
+22. ⬜ **CloudFront Key Groupへの移行**（Lambda - 問題7）
+23. ⬜ **コールドスタート対策**（Lambda - 問題8）
 
 #### 共通:
 
-19. ⬜ **モニタリング機能の追加**（S3 - 問題10、Lambda - 問題9）
-20. ⬜ **テストコードの追加**（Lambda - 問題10）
+24. ⬜ **モニタリング機能の追加**（S3 - 問題10、Lambda - 問題9）
+25. ⬜ **テストコードの追加**（Lambda - 問題10）
 
 ---
 
 ## 📊 優先度サマリー
 
-| 優先度 | タスク数 | モジュール                                             |
-| ------ | -------- | ------------------------------------------------------ |
-| 🔴 高  | 4        | Lambda依存ライブラリ、認証、レート制限、署名検証設定   |
-| 🟡 中  | 10       | CORS、ログ、エラーハンドリング、Key Group移行、監視    |
-| 🟢 低  | 6        | バリデーション、タグ、キャッシュ最適化、テストコード等 |
+| 優先度  | タスク数 | モジュール                                                                                   |
+| ------- | -------- | -------------------------------------------------------------------------------------------- |
+| 🔴 高   | 4        | S3/Images パブリックアクセス無効化、署名付きURL移行、カメラリストAPI、Lambda認証、レート制限 |
+| 🟡 中   | 12       | CORS、ログ、エラーハンドリング、Key Group移行、監視、パス規則文書化                          |
+| 🟢 低   | 7        | バリデーション、タグ、キャッシュ最適化、テストコード等                                       |
+| ✅ 完了 | 8        | HTML実装、Lambda署名URL、Secrets Manager設定、Dashboard署名付きURLエンドポイント             |
 
 ---
 
