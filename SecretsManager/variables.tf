@@ -6,7 +6,6 @@ variable "region" {
 variable "profile" {
   description = "AWSのプロファイル名"
   type        = string
-  default     = "AdministratorAccess-522814702929"
 }
 
 //---------------------------------------------

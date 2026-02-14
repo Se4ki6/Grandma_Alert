@@ -36,7 +36,7 @@ graph TD
         S3 -- "Event Trigger" --> Lambda_Push[Lambda: Notification]
 
         Lambda_Bot[Lambda: Command Handler] -->|Update Status| Shadow
-        Lambda_Bot -->|Get Info| DynamoDB[(DynamoDB: User Info)]
+        Lambda_Bot -->|Get Info| SecretsManager[(SecretsManager: EmergencyInfo)]
     end
 
     %% Interface Layer
@@ -95,7 +95,7 @@ _(M5Stack版と同様だが、Python SDKとの親和性が高い)_
      - Shadowを `monitoring` に更新 → **RasPi側がDeltaを検知して撮影ループ停止**。
      - LINEに「対応完了。システムを停止します」と通知。
    - **処理 B:** 「通報する」
-     - DynamoDBから通報用テンプレートを取得。
+     - SecretsManagerから通報用テンプレートを取得。
      - LINEにテキスト送信（住所、電話番号、既往歴、解錠方法など）。
    - **処理 C:** 「通報完了」
      - 処理 A と同様にシステム停止。
@@ -116,7 +116,7 @@ _(M5Stack版と同様だが、Python SDKとの親和性が高い)_
 
 ### 4. データ設計
 
-- **DynamoDB: EmergencyInfo テーブル** (変更なし)
+- **SecretsManager: EmergencyInfo** (変更なし)
   - `house_id` (PK), `address`, `phone`, `entry_method`, `medical_history`, `notes`
 
 ---
@@ -125,12 +125,12 @@ _(M5Stack版と同様だが、Python SDKとの親和性が高い)_
 
 - [ ] **Step 1: LINE Group Setup**
   - LINE Bot作成 & グループ招待 & groupId取得。
-- [ ] **Step 2: AWS Base & RasPi Setup**
-  - IoT Core (Thing作成, 証明書発行), S3, DynamoDB構築。
+- [x] **Step 2: AWS Base & RasPi Setup** ✅ **完了** (2026/02/14)
+  - IoT Core (Thing作成, 証明書発行), S3, SecretsManager構築。
   - **RasPiセットアップ:** OS焼く、SSH有効化、Python環境構築 (`pip install awsiotsdk boto3 opencv-python`)。
   - AWS証明書をRasPi (`/home/pi/certs/`) に配置。
-- [ ] **Step 3: "Alert Storm" Implementation**
-  - **RasPi (Python):** GPIOボタン検知 → MQTT Publish 実装。
+- [x] **Step 3: "Alert Storm" Implementation** ✅ **完了** (2026/02/14)
+  - **RasPi (Python):** Zigbeeボタン検知 → MQTT Publish 実装。
   - **RasPi (Python):** Shadow監視 → カメラ撮影 & S3アップロードループ実装。
   - Lambda: S3トリガー → LINE画像送信の実装。
 - [ ] **Step 4: Control Logic**
