@@ -13,6 +13,14 @@ resource "aws_lambda_function" "send_line" {
   handler          = "line.lambda_handler"
   runtime          = "python3.9"
   source_code_hash = data.archive_file.dummy_zip.output_base64sha256
+
+  environment {
+    variables = {
+      LINE_CHANNEL_ACCESS_TOKEN = var.line_channel_access_token
+      GROUP_ID                  = var.group_id
+      IMAGE_GALLERY_URL         = var.image_gallery_url
+    }
+  }
 }
 
 # IAM Role (Logsへの書き込み権限)
