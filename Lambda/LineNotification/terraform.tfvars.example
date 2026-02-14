@@ -1,0 +1,4 @@
+profile                  = "your-aws-profile"
+line_channel_access_token = "YOUR_LINE_CHANNEL_ACCESS_TOKEN"
+group_id                  = "YOUR_GROUP_ID"
+image_gallery_url         = "https://your-s3-bucket-url/index.html"
