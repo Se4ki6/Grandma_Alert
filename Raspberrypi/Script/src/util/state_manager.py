@@ -3,53 +3,54 @@ from enum import Enum, auto
 
 
 class Status(Enum):
-    """システムの状態を表すEnum"""
-    MONITORING = auto()  # 通常監視中
-    ALERT = auto()       # アラート状態
+    MONITORING = auto()
+    ALERT = auto()
 
 
-# Observerパターンを用いた状態管理クラス
 class StateManager:
     def __init__(self, initial_state: Status = Status.MONITORING):
         self._status = initial_state
         self._lock = threading.Lock()
-        self._listeners = [] # 変更を通知する相手リスト
+        self._listeners = []
 
     @property
     def current(self):
-        """現在のステータスを読み取る"""
         with self._lock:
             return self._status
 
-
     def add_listener(self, callback):
-        """状態が変わった時に呼んでほしい関数を登録する"""
         with self._lock:
             self._listeners.append(callback)
         
     def remove_listener(self, callback):
-        """登録されたリスナーを解除する（メモリリーク防止）"""
         with self._lock:
             if callback in self._listeners:
                 self._listeners.remove(callback)
 
     def update(self, new_status):
-        """ステータスを更新する (変更があった場合のみ通知)"""
+        if isinstance(new_status, str):
+            try:
+                new_status = Status[new_status.upper()]
+            except KeyError:
+                print(f"⚠️ Invalid status: {new_status}")
+                return
+        
         with self._lock:
             if self._status == new_status:
-                return # 変更なしなら何もしない
+                return
             
-            print(f"🔄 State Transition: {self._status} -> {new_status}")
+            old = self._status
             self._status = new_status
         
-        # ロックを解放してから通知 (デッドロック防止)
+        print("-" * 40)
+        print(f"🔄 State: {old.name} -> {new_status.name}")
+        print("-" * 40)
         self._notify(new_status)
-        
 
     def _notify(self, new_status):
-        """登録されたリスナー全員に知らせる"""
+        status_str = new_status.name.lower() if isinstance(new_status, Status) else new_status
         for callback in self._listeners:
             try:
-                callback(new_status)
+                callback(status_str)
             except Exception as e:
-                print(f"⚠️ State Listener Error: {e}")
+                print(f"⚠️ Listener Error ({callback.__qualname__}): {e}")

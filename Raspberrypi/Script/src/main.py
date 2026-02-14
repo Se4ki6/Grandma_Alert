@@ -1,53 +1,61 @@
 import time
-import threading
-from util.config import Config
 from util.mqtt_client import IotClient
-from util.state_manager import StateManager
+from util.state_manager import StateManager, Status
 from util.storage import StorageManager
 from util.camera import CameraManager
 from util.service import SurveillanceService
+from infra.local_mqtt import LocalZigbeeClient
 
 
 class ElderlyWatcherApp:
-    def __init__(self, state_manager, iot_client, surveillance_service):
-        # 1. 部品の生成
+    def __init__(self, state_manager, iot_client, surveillance_service, zigbee_client):
         self.state = state_manager
         self.iot = iot_client
         self.surveillance_service = surveillance_service
-        self._alert_thread = None
-        self._stop_alert = threading.Event()
+        self.zigbee = zigbee_client
 
-        # 2. 部品の接続 (Wiring)
-        # 「ステータスが変わったら、AWSに報告してね」と登録
         self.state.add_listener(self.iot.report_status)
-        # 「ステータスが変わったら、対応する処理を実行してね」と登録
         self.state.add_listener(self.surveillance_service._handle_state_change)
 
     def run(self):
-        # 接続開始
         self.iot.connect()
+        self.zigbee.connect()
         
-        # 現在の状態をAWSに初期報告
-        self.state.update(StateManager.Status.MONITORING)
+        time.sleep(1)
+        self.iot.report_status(self.state.current)
 
-        print("🚀 System Started.")
+        print("=" * 50)
+        print("🚀 System Started. Waiting for events...")
+        print("=" * 50)
+        
         try:
-            # メインスレッドは待機するだけ（状態変更はIoTから来る）
             while True:
-                # ここに物理ボタン監視を入れるなら：
-                # if button.is_pressed(): 
-                #     self.state.update(StateManager.Status.ALERT)
+                if self.zigbee.is_pressed(): 
+                    print("=" * 50)
+                    print("🔘 Emergency button pressed!")
+                    print("=" * 50)
+                    self.state.update(Status.ALERT)
                 time.sleep(1)
 
         except KeyboardInterrupt:
-            print("Stopping...")
+            print("=" * 50)
+            print("🛑 Shutting down...")
             self.surveillance_service.stop_monitoring()
+            self.zigbee.disconnect()
+            print("👋 Goodbye.")
+            print("=" * 50)
 
 if __name__ == "__main__":
-    state_manager = StateManager(initial_state=StateManager.Status.MONITORING)
+    print("="*50)
+    print("🏠 ElderlyWatcher App Initializing...")
+    print("="*50)
+    
+    state_manager = StateManager(initial_state=Status.MONITORING)
     iot_client = IotClient(on_delta_callback=state_manager.update)
     camera_manager = CameraManager()
     storage_manager = StorageManager()
     surveillance_service = SurveillanceService(camera_manager, storage_manager)
-    app = ElderlyWatcherApp(state_manager, iot_client, surveillance_service)
+    zigbee = LocalZigbeeClient()
+    
+    app = ElderlyWatcherApp(state_manager, iot_client, surveillance_service, zigbee)
     app.run()

@@ -7,12 +7,10 @@ class CameraManager:
         self.tmp_dir = "/tmp"
 
     def capture(self):
-        """撮影してファイルパスを返す"""
         timestamp = int(time.time())
         filename = f"{timestamp}.jpg"
         filepath = os.path.join(self.tmp_dir, filename)
 
-        # カメラ起動
         cap = cv2.VideoCapture(0)
         if cap.isOpened():
             ret, frame = cap.read()
@@ -29,6 +27,5 @@ class CameraManager:
         return filepath, filename
 
     def cleanup(self, filepath):
-        """一時ファイルを削除"""
         if os.path.exists(filepath):
             os.remove(filepath)
