@@ -1,6 +1,6 @@
 # 🚨 Grandma Alert プロジェクト概要・進捗説明資料
 
-**最終更新:** 2026年2月1日  
+**最終更新:** 2026年2月14日  
 **対象者:** ステークホルダー、新規参画メンバー、プロジェクトレビュアー
 
 ---
@@ -34,7 +34,7 @@
 
 - **人命優先設計:** コストやAPI制限よりも、人命と対応スピードを最優先
 - **エッジデバイス:** Raspberry Pi + カメラモジュール + 物理ボタン
-- **クラウド基盤:** AWS（IoT Core、S3、Lambda、DynamoDB）
+- **クラウド基盤:** AWS（IoT Core、S3、Lambda、Secrets Manager）
 - **通知手段:** LINE Messaging API
 
 ---
@@ -220,14 +220,14 @@
 
 ### 🔜 未着手項目
 
-#### Raspberry Pi実装
+#### Raspberry Pi実装 ✅ **完了** (2026/02/14)
 
-- [ ] OS・Python環境構築
-- [ ] AWS IoT SDK統合
-- [ ] カメラモジュール接続
-- [ ] 物理ボタンGPIO実装
-- [ ] メインアプリケーション（main.py）開発
-- [ ] Device Shadow同期処理
+- [x] OS・Python環境構築
+- [x] AWS IoT SDK統合
+- [x] カメラモジュール接続
+- [x] Zigbeeボタン監視実装
+- [x] メインアプリケーション（main.py）開発
+- [x] Device Shadow同期処理
 - [ ] 自動起動設定（systemd）
 
 #### LINE Bot機能
@@ -247,22 +247,22 @@
 
 ## 4. 主要機能の進捗
 
-| 機能カテゴリ                  | 進捗率 | 状態        | 備考                           |
-| ----------------------------- | ------ | ----------- | ------------------------------ |
-| LINE Bot基盤                  | 80%    | ✅ ほぼ完了 | Group ID取得済み               |
-| AWS IoT Core                  | 100%   | ✅ 完了     | 証明書・エンドポイント確定     |
-| S3ストレージ（Images）        | 100%   | ✅ 完了     | 暗号化・ライフサイクル設定済み |
-| S3ストレージ（Dashboard）     | 90%    | ✅ ほぼ完了 | CloudFront統合済み             |
-| CloudFront CDN                | 90%    | ✅ ほぼ完了 | 署名付きURL対応済み            |
-| Lambda（署名付きURL生成）     | 100%   | ✅ 完了     | 本番運用可能                   |
-| Lambda（通知処理）            | 30%    | ⏳ 開発中   | LINE API統合待ち               |
-| Lambda（コマンド処理）        | 20%    | ⏳ 設計中   | Webhook処理実装待ち            |
-| Secrets Manager               | 100%   | ✅ 完了     | 通報情報格納済み               |
-| Raspberry Piアプリ            | 0%     | 🔜 未着手   | ハードウェア準備待ち           |
-| LINEリッチメニュー            | 0%     | 🔜 未着手   | デザイン作成待ち               |
-| Webダッシュボード（フロント） | 60%    | ⏳ 開発中   | HTML実装済み、JS機能開発中     |
+| 機能カテゴリ                  | 進捗率 | 状態        | 備考                                  |
+| ----------------------------- | ------ | ----------- | ------------------------------------- |
+| LINE Bot基盤                  | 80%    | ✅ ほぼ完了 | Group ID取得済み                      |
+| AWS IoT Core                  | 100%   | ✅ 完了     | 証明書・エンドポイント確定            |
+| S3ストレージ（Images）        | 100%   | ✅ 完了     | 暗号化・ライフサイクル設定済み        |
+| S3ストレージ（Dashboard）     | 90%    | ✅ ほぼ完了 | CloudFront統合済み                    |
+| CloudFront CDN                | 90%    | ✅ ほぼ完了 | 署名付きURL対応済み                   |
+| Lambda（署名付きURL生成）     | 100%   | ✅ 完了     | 本番運用可能                          |
+| Lambda（通知処理）            | 30%    | ⏳ 開発中   | LINE API統合待ち                      |
+| Lambda（コマンド処理）        | 20%    | ⏳ 設計中   | Webhook処理実装待ち                   |
+| Secrets Manager               | 100%   | ✅ 完了     | 通報情報格納済み                      |
+| Raspberry Piアプリ            | 90%    | ✅ ほぼ完了 | スクリプト実装完了（systemd設定待ち） |
+| LINEリッチメニュー            | 0%     | 🔜 未着手   | デザイン作成待ち                      |
+| Webダッシュボード（フロント） | 60%    | ⏳ 開発中   | HTML実装済み、JS機能開発中            |
 
-**総合進捗: 約 60%**
+**総合進捗: 約 75%**
 
 ---
 
@@ -347,14 +347,14 @@
   - LINE署名検証
   - Device Shadow更新ロジック
 
-#### Week 2
+#### Week 2 ✅ 完了 (2026/02/14)
 
-- [ ] Raspberry Pi環境構築
+- [x] Raspberry Pi環境構築
   - OS・Python環境セットアップ
   - AWS IoT SDK統合
   - カメラモジュール接続
-- [ ] メインアプリケーション開発（main.py）
-  - 物理ボタン監視
+- [x] メインアプリケーション開発（main.py）
+  - Zigbeeボタン監視
   - Device Shadow同期
   - 撮影・アップロードループ
 - [ ] 単体テスト実施
@@ -418,9 +418,8 @@
    - **内容:** 通報情報をSecrets Managerに格納完了（DynamoDBから方針変更）
 
 3. **Raspberry Piアプリ未開発**
-   - **状態:** ⏳ 対応待ち
-   - **影響:** システムの中核機能が動作しない
-   - **予定:** フェーズ1 Week2で実装
+   - **状態:** ✅ 解決済み (2026/02/14)
+   - **内容:** メインアプリケーション(main.py)および各モジュール実装完了
 
 ---
 
@@ -536,7 +535,7 @@
 
 ### 技術スタック
 
-- **Infrastructure:** AWS (IoT Core, S3, Lambda, DynamoDB, CloudFront, API Gateway)
+- **Infrastructure:** AWS (IoT Core, S3, Lambda, Secrets Manager, CloudFront, API Gateway)
 - **IaC:** Terraform
 - **Edge Device:** Raspberry Pi, Python 3.x
 - **Notification:** LINE Messaging API

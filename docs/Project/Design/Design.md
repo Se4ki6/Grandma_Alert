@@ -13,58 +13,59 @@
 - [x] **AWS IoT Core セットアップ**
   - [x] モノ (Thing) の作成: `ElderlyCam_01`
   - [x] 証明書 (Cert, Private Key, Root CA) の発行 & ダウンロード
-    - [ ] iot_endpoint = "[a2kvsxl8s30u6t-ats.iot.ap-northeast-1.amazonaws.com](http://a2kvsxl8s30u6t-ats.iot.ap-northeast-1.amazonaws.com/)"
+    - [x] iot_endpoint = "[a2kvsxl8s30u6t-ats.iot.ap-northeast-1.amazonaws.com](http://a2kvsxl8s30u6t-ats.iot.ap-northeast-1.amazonaws.com/)"
   - [x] ポリシー作成 & アタッチ (Connect, Publish, Subscribe, Receive)
-- [ ] **ストレージ & DB構築**
-  - [ ] S3バケット作成 (画像保存用 & 静的Webホスティング用)
-  - [ ] S3ライフサイクル設定 (古い画像を自動削除: eg. 1日後)
-  - [ ] DynamoDBテーブル作成: `EmergencyInfo` (PK: `house_id`)
-  - [ ] DynamoDBへのテストデータ投入 (住所、通報用テキスト等)
+- [x] **ストレージ & DB構築**
+  - [x] S3バケット作成 (画像保存用 & 静的Webホスティング用)
+  - [x] S3ライフサイクル設定 (古い画像を自動削除: eg. 1日後)
+  - [x] SecretsManager作成: `EmergencyInfo` (PK: `house_id`)
+  - [x] SecretsManagerへのテストデータ投入 (住所、通報用テキスト等)
 
-## 🥧 Phase 2: エッジデバイス (Raspberry Pi)
+## 🥧 Phase 2: エッジデバイス (Raspberry Pi) ✅ **完了** (2026/02/14)
 
-- [ ] **OS & 基本設定**
+- [x] **OS & 基本設定**
   - [x] Raspberry Pi OS (Lite推奨) インストール
   - [x] SSH接続有効化 & Wi-Fi設定
   - [x] 固定IP化 (ルーター側設定推奨)
-- [ ] **Python環境構築**
-  - [ ] 必要なライブラリのインストール
+- [x] **Python環境構築**
+  - [x] 必要なライブラリのインストール
     - `pip install awsiotsdk boto3 opencv-python RPi.GPIO`
-  - [ ] 証明書ファイルの配置 (`/home/pi/certs/` 等)
-- [ ] **物理実装**
-  - [ ] カメラモジュール (or USB Webカメラ) 接続 & 動作確認
-  - [ ] 物理ボタンのGPIO接続 & 入力検知テスト
-- [ ] **アプリケーション実装 (main.py)**
-  - [ ] AWS IoT Core 接続処理 (MQTT)
-  - [ ] Device Shadow 監視ロジック (`delta` トピックのSubscribe)
-  - [ ] **[Loop処理]** 物理ボタン監視 → Shadow更新 (`alert`)
-  - [ ] **[Loop処理]** 撮影 → S3アップロード (5秒間隔 / 非同期推奨)
-  - [ ] エラーハンドリング (ネットワーク切断時の再接続など)
+  - [x] 証明書ファイルの配置 (`/home/pi/certs/` 等)
+- [x] **物理実装**
+  - [x] カメラモジュール (or USB Webカメラ) 接続 & 動作確認
+  - [x] Zigbeeボタン接続 & 入力検知テスト
+- [x] **アプリケーション実装 (main.py)**
+  - [x] AWS IoT Core 接続処理 (MQTT)
+  - [x] Device Shadow 監視ロジック (`delta` トピックのSubscribe)
+  - [x] **[Loop処理]** Zigbeeボタン監視 → Shadow更新 (`alert`)
+  - [x] **[Loop処理]** 撮影 → S3アップロード (5秒間隔)
+  - [x] スレッドセーフな状態管理 (StateManager)
+  - [x] オブザーバーパターンによる変更通知
 
 ## ☁️ Phase 3: クラウドロジック (Lambda)
 
-- [ ] **通知システム (Notification Storm)**
-  - [ ] Lambda関数作成: `NotifyFamily` (Runtime: Python 3.x)
-  - [ ] トリガー設定: S3 `ObjectCreated`
-  - [ ] 実装: 画像URLを含んだメッセージをLINE Messaging APIでPush
-- [ ] **司令塔システム (Command Handler)**
-  - [ ] Lambda関数作成: `HandleLineWebhook`
-  - [ ] トリガー設定: API Gateway (HTTP API) → Webhook URLとしてLINEに登録
-  - [ ] 実装: LINE署名検証
-  - [ ] 実装: Postbackアクション分岐
-    - `action=report`: DynamoDB参照 → テキスト送信
+- [x] **通知システム (Notification Storm)**
+  - [x] Lambda関数作成: `NotifyFamily` (Runtime: Python 3.x)
+  - [x] トリガー設定: Raspberrypi
+  - [x] 実装: メッセージをLINE Messaging APIでPush
+- [x] **司令塔システム (Command Handler)**
+  - [x] Lambda関数作成: `HandleLineWebhook`
+  - [x] トリガー設定: API Gateway (HTTP API) → Webhook URLとしてLINEに登録
+  - [x] 実装: LINE署名検証
+  - [x] 実装: Postbackアクション分岐
+    - `action=report`: SecretsManager参照 → テキスト送信
     - `action=safe`: Shadow更新 (`monitoring`) → システム停止通知
 
 ## 📱 Phase 4: UI & リッチメニュー
 
-- [ ] **LINE リッチメニュー**
-  - [ ] メニュー画像の作成 (通報 / 解除 / 一覧)
-  - [ ] JSON定義の作成 (Action領域の指定)
-  - [ ] Messaging API でリッチメニューを作成 & デフォルト設定
-- [ ] **Web Dashboard (S3 Hosting)**
-  - [ ] `index.html` 作成 (全カメラのグリッド表示)
-  - [ ] JavaScript実装 (5秒ごとの画像リロード処理)
-  - [ ] S3バケットポリシー設定 (特定IP制限 or 簡易認証推奨)
+- [-] **LINE リッチメニュー**
+  - [-] メニュー画像の作成 (通報 / 解除 / 一覧)
+  - [-] JSON定義の作成 (Action領域の指定)
+  - [-] Messaging API でリッチメニューを作成 & デフォルト設定
+- [x] **Web Dashboard (S3 Hosting)**
+  - [x] `index.html` 作成 (全カメラのグリッド表示)
+  - [x] JavaScript実装 (5秒ごとの画像リロード処理)
+  - [x] S3バケットポリシー設定 (特定IP制限 or 簡易認証推奨)
 
 ## 🧪 Phase 5: テスト & デプロイ
 
