@@ -23,6 +23,12 @@ resource "aws_lambda_function" "send_line" {
   }
 }
 
+# Lambda Function URL
+resource "aws_lambda_function_url" "send_line" {
+  function_name      = aws_lambda_function.send_line.function_name
+  authorization_type = "NONE"
+}
+
 # IAM Role (Logsへの書き込み権限)
 resource "aws_iam_role" "lambda_role" {
   name = "line_bot_send_line_role"
