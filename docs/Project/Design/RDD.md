@@ -58,23 +58,23 @@ graph TD
 
 ### 📸 A. エッジデバイス (Raspberry Pi)
 
-- **Hardware:** Raspberry Pi (Zero 2 W / 3B+ / 4 など) + Camera Module (または USB Webcam) + **物理ボタン (GPIO接続)**
+- **Hardware:** Raspberry Pi (Zero 2 W / 3B+ / 4 など) + Camera Module (または USB Webcam) + **物理ボタン (Zigbee接続)**
 - **Software Environment:** Raspberry Pi OS / Python 3.x
-- **Libraries:** `boto3`, `awsiotsdk`, `opencv-python` (または `picamera`), `RPi.GPIO`
+- **Libraries:** `boto3`, `awsiotsdk`, `opencv-python`, `paho-mqtt`, `requests`
 
 **基本動作:**
 
-1. **待機モード:** Pythonスクリプト常駐。AWS IoT Device Shadow (`delta` トピック) を監視。GPIOボタンの入力を監視。
+1. **待機モード:** Pythonスクリプト常駐。AWS IoT Device Shadow (`delta` トピック) を監視。ローカルMQTT (zigbee2mqtt) 経由でZigbeeボタンの入力を監視。
 2. **緊急モード:**
    - ボタン押下、またはShadowの `status` が `alert` になると発動。
-   - `cv2.imwrite` 等で撮影 → `boto3` でS3へアップロード（5秒間隔ループ）。
-   - **ファイル名規則:** `camera_id/timestamp.jpg` (履歴保持)
+   - Lambda Function URL へ5秒間隔でPOSTリクエストを送信（撮影・S3アップロード・LINE通知はLambda側で処理）。
 
 **ボタン挙動:**
 
-- **物理ボタン押下時 (GPIO Falling Edge):**
-  - チャタリング処理を挟み、MQTTで `{"state": {"reported": {"status": "alert"}}}` をPublish。
-  - 即座に撮影ループを開始。
+- **物理ボタン押下時 (Zigbee → ローカルMQTT `zigbee2mqtt/emergency_button`):**
+  - `StateManager` が `ALERT` 状態に遷移。
+  - IoT Core へ `reported.status = "alert"` をPublish。
+  - 即座にLambda呼び出しループを開始。
 
 ### ☁️ B. クラウドロジック (AWS)
 
@@ -88,7 +88,7 @@ _(M5Stack版と同様だが、Python SDKとの親和性が高い)_
    - **処理:** 画像がアップロードされた瞬間にLambdaが起動。
      - LINE Messaging API (`pushMessage`) を叩く。
    - **送信先:** 家族グループID (`GroupId`)
-   - **内容:** 画像メッセージ（Original / Preview 共にS3のURL）
+   - **内容:** Flex Message（通報ボタン・停止ボタン・ダッシュボードリンクを含む）
 3. **LINE Bot & Lambda (司令塔)**
    - **トリガー:** LINE Webhook (Rich Menu Postback)
    - **処理 A:** 「大丈夫（誤報/対応済）」
@@ -106,7 +106,7 @@ _(M5Stack版と同様だが、Python SDKとの親和性が高い)_
    - **グループLINE:** 鬼のような通知音。
    - **リッチメニュー (画面下固定):**
      - ボタン① [ 🚑 通報する ] (Action: Postback `action=report`)
-     - ボタン② [ 🙆‍♀️ 大丈夫/停止 ] (Action: Postback `action=safe`)
+     - ボタン② [ 🙆‍♀️ 大丈夫/停止 ] (Action: Postback `action=stop`)
      - ボタン③ [ 📹 Webカメラ一覧 ] (Action: URI `S3 Web Dashboard URL`)
 2. **Web Dashboard (一覧監視)**
    - **S3 Static Website Hosting:**
@@ -116,8 +116,8 @@ _(M5Stack版と同様だが、Python SDKとの親和性が高い)_
 
 ### 4. データ設計
 
-- **SecretsManager: EmergencyInfo** (変更なし)
-  - `house_id` (PK), `address`, `phone`, `entry_method`, `medical_history`, `notes`
+- **SecretsManager: LineEmergencyInfo**
+  - `name`, `address`, `disease`
 
 ---
 
@@ -130,14 +130,16 @@ _(M5Stack版と同様だが、Python SDKとの親和性が高い)_
   - **RasPiセットアップ:** OS焼く、SSH有効化、Python環境構築 (`pip install awsiotsdk boto3 opencv-python`)。
   - AWS証明書をRasPi (`/home/pi/certs/`) に配置。
 - [x] **Step 3: "Alert Storm" Implementation** ✅ **完了** (2026/02/14)
-  - **RasPi (Python):** Zigbeeボタン検知 → MQTT Publish 実装。
-  - **RasPi (Python):** Shadow監視 → カメラ撮影 & S3アップロードループ実装。
-  - Lambda: S3トリガー → LINE画像送信の実装。
-- [ ] **Step 4: Control Logic**
-  - LINEリッチメニュー適用。
-  - Lambda: Postbackイベント（通報/停止）→ Shadow更新処理の実装。
-- [ ] **Step 5: Web Dashboard**
-  - HTML/JS作成 & S3配置。
+  - **RasPi (Python):** Zigbeeボタン検知 → StateManager遷移 & IoT Core Publish 実装。
+  - **RasPi (Python):** Shadow delta監視 → Lambda Function URL呼び出しループ実装。
+  - Lambda (`LineNotification`): S3トリガー → LINE Flex Message送信の実装。
+- [x] **Step 4: Control Logic** ✅ **完了** (2026/02/14)
+  - ~~Lambda (`MessageHandle`): Postbackイベント（通報/停止）→ Shadow更新処理。~~ ✅
+  - ~~RichMenuHandle Lambda & リッチメニュー作成スクリプト実装。~~ ✅
+  - [ ] LINEリッチメニューをLINE Developersコンソールに登録・適用。
+- [-] **Step 5: Web Dashboard** (部分実装)
+  - ~~HTML/CSS作成 & S3 + CloudFront配置。~~ ✅
+  - [ ] JavaScript自動リフレッシュ機能（5秒間隔）実装。
 
 ---
 

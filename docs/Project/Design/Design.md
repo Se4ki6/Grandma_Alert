@@ -38,34 +38,35 @@
   - [x] AWS IoT Core 接続処理 (MQTT)
   - [x] Device Shadow 監視ロジック (`delta` トピックのSubscribe)
   - [x] **[Loop処理]** Zigbeeボタン監視 → Shadow更新 (`alert`)
-  - [x] **[Loop処理]** 撮影 → S3アップロード (5秒間隔)
+  - [x] **[Loop処理]** Lambda Function URL呼び出し（5秒間隔）※撮影・通知はLambda側で処理
   - [x] スレッドセーフな状態管理 (StateManager)
   - [x] オブザーバーパターンによる変更通知
 
 ## ☁️ Phase 3: クラウドロジック (Lambda)
 
 - [x] **通知システム (Notification Storm)**
-  - [x] Lambda関数作成: `NotifyFamily` (Runtime: Python 3.x)
-  - [x] トリガー設定: Raspberrypi
-  - [x] 実装: メッセージをLINE Messaging APIでPush
+  - [x] Lambda関数作成: `LineNotification` (Runtime: Python 3.x)
+  - [x] トリガー設定: S3イベント (ObjectCreated)
+  - [x] 実装: Flex MessageをLINE Messaging APIでPush
 - [x] **司令塔システム (Command Handler)**
-  - [x] Lambda関数作成: `HandleLineWebhook`
+  - [x] Lambda関数作成: `MessageHandle`
   - [x] トリガー設定: API Gateway (HTTP API) → Webhook URLとしてLINEに登録
-  - [x] 実装: LINE署名検証
+  - [x] 実装: LINE署名検証 (HMAC-SHA256)
   - [x] 実装: Postbackアクション分岐
     - `action=report`: SecretsManager参照 → テキスト送信
-    - `action=safe`: Shadow更新 (`monitoring`) → システム停止通知
+    - `action=stop`: Shadow更新 (`monitoring`) → システム停止通知
 
 ## 📱 Phase 4: UI & リッチメニュー
 
-- [-] **LINE リッチメニュー**
-  - [-] メニュー画像の作成 (通報 / 解除 / 一覧)
-  - [-] JSON定義の作成 (Action領域の指定)
-  - [-] Messaging API でリッチメニューを作成 & デフォルト設定
+- [x] **LINE リッチメニュー（スクリプト・Lambda実装済み）**
+  - [x] メニュー画像の作成スクリプト (`create_simple_image.py`)
+  - [x] JSON定義の作成スクリプト (`create_rich_menu.py`)
+  - [x] RichMenuHandle Lambda実装 (`postback_handler.py`)
+  - [ ] LINE DevelopersコンソールへのリッチメニューID登録・適用
 - [x] **Web Dashboard (S3 Hosting)**
-  - [x] `index.html` 作成 (全カメラのグリッド表示)
-  - [x] JavaScript実装 (5秒ごとの画像リロード処理)
-  - [x] S3バケットポリシー設定 (特定IP制限 or 簡易認証推奨)
+  - [x] `index.html` / `error.html` 作成
+  - [ ] JavaScript実装 (5秒ごとの画像リロード処理) ※未実装
+  - [x] S3 + CloudFront配信設定
 
 ## 🧪 Phase 5: テスト & デプロイ
 

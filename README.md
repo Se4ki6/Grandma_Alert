@@ -14,8 +14,8 @@
 
 ## 2. 仕様・設計ドキュメント
 
-- 全体設計: [docs/Design.md](docs/Design.md)
-- 要件/ロードマップ: [docs/RDD.md](docs/RDD.md)
+- 全体設計: [docs/Project/Design/Design.md](docs/Project/Design/Design.md)
+- 要件/ロードマップ: [docs/Project/Design/RDD.md](docs/Project/Design/RDD.md)
 
 ## 3. 現在の進捗（2026/02/14時点）
 
@@ -37,9 +37,9 @@
   - 署名付きURL対応
 - Lambda関数
   - GenerateSignedURL（署名付きURL生成）
-  - FetchGroupID（Group ID取得）
   - LineNotification（LINE通知送信）
   - MessageHandle（リッチメニューPostback処理）
+  - RichMenuHandle（リッチメニュー作成・Postback処理）
 - AWS Secrets Manager
   - 通報情報の安全な格納（名前、住所、病歴）
   - Lambda関数からのアクセス設定
@@ -56,10 +56,11 @@
 ### ⏳ 一部実装中
 
 - Webダッシュボード（基本実装完了、機能強化中）
+- LINEリッチメニュー（作成スクリプト・Lambda実装済み、LINE Developersコンソールへの登録・適用が未完了）
 
 ### 🔜 未着手（これからの主要タスク）
 
-- LINEリッチメニューのビジュアル作成・設定
+- FetchGroupID Lambda（Terraform定義のみ、Lambdaコード未実装）
 - システム統合テスト・避難訓練
 - 運用設定（自動起動、ログローテーション）
 
@@ -102,8 +103,7 @@
 │       └── public.pem.key
 │
 ├── Lambda/                           # Lambda関数群
-│   ├── FetchGroupID/                 # LINE groupId取得Lambda
-│   │   ├── terraform.tfstate
+│   ├── FetchGroupID/                 # LINE groupId取得Lambda（Terraformのみ、コード未実装）
 │   │   └── terraform.tfvars
 │   │
 │   ├── GenerateSignedURL/            # 署名付きURL生成Lambda
@@ -195,9 +195,10 @@
 │
 └── SecretsManager/                   # 秘匿情報管理(Terraform)
     ├── lambda_associate.md
+    ├── outputs.tf
     ├── provider.tf
     ├── README.md
-    ├── sevretsmanager.tf
+    ├── secretsmanager.tf
     ├── terraform.tfvars.template
     └── variables.tf
 ```
@@ -206,12 +207,12 @@
 
 ### Step 1: ドキュメント把握
 
-1. [docs/Design.md](docs/Design.md) を通読（全体像）
-2. [docs/RDD.md](docs/RDD.md) でロードマップ確認
+1. [docs/Project/Design/Design.md](docs/Project/Design/Design.md) を通読（全体像）
+2. [docs/Project/Design/RDD.md](docs/Project/Design/RDD.md) でロードマップ確認
 
 ### Step 2: Terraformディレクトリを確認
 
-- [Lambda/FetchGroupID/](Lambda/FetchGroupID/) : LINEグループID取得用のAPIGateway/Lambda一式
+- [Lambda/FetchGroupID/](Lambda/FetchGroupID/) : LINEグループID取得用（Terraform定義のみ、コード未実装）
 - [Lambda/MessageHandle/](Lambda/MessageHandle/) : Postback処理Lambda + API Gateway
 - [IotCore/](IotCore/) : IoT Core基盤の定義
 - [Raspberrypi/](Raspberrypi/) : Raspberry Pi用スクリプトとIAM設定
@@ -250,15 +251,17 @@ SSO利用時は、CLIプロファイルを指定して作業します（例: `$A
 
 - ~~S3バケット作成 & ライフサイクル設定~~ ✅
 - ~~Secrets Manager設定~~ ✅
-- ~~RasPi: MQTT + Shadow監視 + 撮影/S3アップロード~~ ✅
-- ~~Lambda: S3トリガー → LINE通知~~ ✅
+- ~~RasPi: MQTT + Shadow監視 + Lambda連携による撮影・通知~~ ✅
+- ~~Lambda: S3トリガー → LINE通知（Flex Message）~~ ✅
 - ~~Lambda: LINE Webhook → Shadow更新/通報テンプレ送信~~ ✅
 - ~~API Gateway + MessageHandle Lambda~~ ✅
+- ~~RichMenuHandle Lambda + リッチメニュー作成スクリプト~~ ✅
 
 ### Phase 4: ⏳ 実装中
 
-- LINEリッチメニュー画像作成・設定
-- Webダッシュボード機能強化
+- LINEリッチメニュー登録・LINE Developersコンソールへの適用
+- Webダッシュボード機能強化（自動リフレッシュ等）
+- FetchGroupID Lambda実装
 
 ### Phase 5: 🔜 未着手
 
@@ -273,4 +276,4 @@ SSO利用時は、CLIプロファイルを指定して作業します（例: `$A
 
 ---
 
-**次にやるべきことが分からない場合**は、[docs/RDD.md](docs/RDD.md) のフェーズ順で進めてください。
+**次にやるべきことが分からない場合**は、[docs/Project/Design/RDD.md](docs/Project/Design/RDD.md) のフェーズ順で進めてください。

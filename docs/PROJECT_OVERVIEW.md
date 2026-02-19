@@ -97,7 +97,7 @@
 - **機能:**
   - 物理ボタン監視 (GPIO)
   - AWS IoT Device Shadow との同期
-  - 5秒間隔での撮影とS3アップロード
+  - 5秒間隔でのLambda Function URL呼び出し（撮影・S3アップロード・通知はLambda側で処理）
   - 緊急モード/待機モードの切り替え
 
 #### B. AWS IoT Core & Device Shadow
@@ -180,11 +180,11 @@
 - [x] 有効期限設定（1時間）
 - [x] エラーハンドリング実装
 
-#### Lambda - FetchGroupID ✅
+#### Lambda - FetchGroupID 🔜 未実装
 
-- [x] LINE Group ID取得用API基盤
-- [x] API Gateway設定
-- [x] ダミーレスポンス実装
+- [ ] LINE Group ID取得用Lambdaコード（Terraform定義のみ存在）
+- [ ] API Gateway設定
+- [ ] 実装
 
 #### Terraform管理 ✅
 
@@ -201,24 +201,28 @@
 
 ---
 
-### ⏳ 部分実装・調整中
+#### Lambda - LineNotification ✅
 
-#### Lambda - NotifyFamily
+- [x] S3イベントトリガー設定
+- [x] LINE Messaging API統合（Flex Message）
+- [x] 家族グループへのPush送信実装
 
-- [ ] S3イベントトリガー設定
-- [ ] LINE Messaging API統合
-- [ ] 署名付きURL生成との連携
-- [ ] Secrets Managerからの通報情報取得
+#### Lambda - MessageHandle ✅
 
-#### Lambda - HandleLineWebhook
+- [x] LINE Webhook受信処理
+- [x] LINE署名検証（HMAC-SHA256）
+- [x] リッチメニューPostbackアクション処理（`action=report` / `action=stop`）
+- [x] Secrets Managerから通報情報取得
+- [x] Device Shadow更新ロジック（`action=stop` 時）
 
-- [ ] LINE Webhook受信処理
-- [ ] リッチメニューアクション処理
-- [ ] Device Shadow更新ロジック
+#### Lambda - RichMenuHandle ✅
+
+- [x] RichMenuHandle Lambda実装（Postback処理）
+- [x] リッチメニュー作成・画像アップロード・デフォルト設定スクリプト
 
 ---
 
-### 🔜 未着手項目
+### 🔜 未着手・残タスク
 
 #### Raspberry Pi実装 ✅ **完了** (2026/02/14)
 
@@ -230,39 +234,45 @@
 - [x] Device Shadow同期処理
 - [ ] 自動起動設定（systemd）
 
-#### LINE Bot機能
+#### LINE Bot機能（⏳ 一部実装中）
 
-- [ ] リッチメニュー画像作成
-- [ ] リッチメニューJSON定義
-- [ ] Messaging APIでのメニュー登録
-- [ ] Webhook URL最終設定
+- [x] リッチメニュー画像作成スクリプト (`create_simple_image.py`)
+- [x] リッチメニューJSON定義スクリプト (`create_rich_menu.py`)
+- [ ] LINE DevelopersコンソールへのリッチメニューID登録・適用
+- [ ] Webhook URL最終設定（API Gateway URL登録）
 
-#### Webダッシュボード
+#### Webダッシュボード（⏳ 一部実装中）
 
-- [ ] 複数カメラ対応のグリッド表示
+- [x] HTML/CSS実装・S3配置完了
 - [ ] JavaScript自動リフレッシュ機能（5秒間隔）
 - [ ] 署名付きURL取得の統合
+
+#### FetchGroupID Lambda
+
+- [ ] Lambdaコード実装（現在Terraform定義のみ）
 
 ---
 
 ## 4. 主要機能の進捗
 
-| 機能カテゴリ                  | 進捗率 | 状態        | 備考                                  |
-| ----------------------------- | ------ | ----------- | ------------------------------------- |
-| LINE Bot基盤                  | 80%    | ✅ ほぼ完了 | Group ID取得済み                      |
-| AWS IoT Core                  | 100%   | ✅ 完了     | 証明書・エンドポイント確定            |
-| S3ストレージ（Images）        | 100%   | ✅ 完了     | 暗号化・ライフサイクル設定済み        |
-| S3ストレージ（Dashboard）     | 90%    | ✅ ほぼ完了 | CloudFront統合済み                    |
-| CloudFront CDN                | 90%    | ✅ ほぼ完了 | 署名付きURL対応済み                   |
-| Lambda（署名付きURL生成）     | 100%   | ✅ 完了     | 本番運用可能                          |
-| Lambda（通知処理）            | 30%    | ⏳ 開発中   | LINE API統合待ち                      |
-| Lambda（コマンド処理）        | 20%    | ⏳ 設計中   | Webhook処理実装待ち                   |
-| Secrets Manager               | 100%   | ✅ 完了     | 通報情報格納済み                      |
-| Raspberry Piアプリ            | 90%    | ✅ ほぼ完了 | スクリプト実装完了（systemd設定待ち） |
-| LINEリッチメニュー            | 0%     | 🔜 未着手   | デザイン作成待ち                      |
-| Webダッシュボード（フロント） | 60%    | ⏳ 開発中   | HTML実装済み、JS機能開発中            |
+| 機能カテゴリ                  | 進捗率 | 状態        | 備考                                         |
+| ----------------------------- | ------ | ----------- | -------------------------------------------- |
+| LINE Bot基盤                  | 100%   | ✅ 完了     | Group ID取得・Webhook処理実装済み            |
+| AWS IoT Core                  | 100%   | ✅ 完了     | 証明書・エンドポイント確定                   |
+| S3ストレージ（Images）        | 100%   | ✅ 完了     | 暗号化・ライフサイクル設定済み               |
+| S3ストレージ（Dashboard）     | 90%    | ✅ ほぼ完了 | CloudFront統合済み                           |
+| CloudFront CDN                | 90%    | ✅ ほぼ完了 | 署名付きURL対応済み                          |
+| Lambda（署名付きURL生成）     | 100%   | ✅ 完了     | 本番運用可能                                 |
+| Lambda（通知処理）            | 100%   | ✅ 完了     | Flex Message実装、S3トリガー設定済み         |
+| Lambda（コマンド処理）        | 100%   | ✅ 完了     | 署名検証・Shadow更新・Secrets Manager連携済み|
+| Lambda（リッチメニュー）      | 100%   | ✅ 完了     | Postback処理・作成スクリプト実装済み         |
+| Secrets Manager               | 100%   | ✅ 完了     | 通報情報格納済み                             |
+| Raspberry Piアプリ            | 90%    | ✅ ほぼ完了 | スクリプト実装完了（systemd設定待ち）        |
+| LINEリッチメニュー登録・適用  | 0%     | 🔜 未着手   | LINE Developersコンソールへの登録待ち        |
+| FetchGroupID Lambda           | 0%     | 🔜 未着手   | Terraform定義のみ、コード未実装              |
+| Webダッシュボード（フロント） | 70%    | ⏳ 開発中   | HTML/CSS実装済み、JS自動リフレッシュ未実装   |
 
-**総合進捗: 約 75%**
+**総合進捗: 約 85%**
 
 ---
 
@@ -293,8 +303,9 @@
 
 #### Lambda セキュリティ
 
-- ✅ **環境変数の暗号化**
-  - AWS Secrets Manager連携（準備中）
+- ✅ **Secrets Manager連携**
+  - 通報情報（名前・住所・病歴）をSecrets Managerで安全に管理
+  - MessageHandle LambdaがSecretsManager参照でアクセス
 - ✅ **IAMロール最小権限**
   - 各Lambda関数に必要最小限の権限のみ付与
 
@@ -333,22 +344,16 @@
 
 ## 6. 今後の実装予定
 
-### フェーズ1: コアシステム完成（2週間）
+### フェーズ1: コアシステム完成 ✅ 完了 (2026/02/14)
 
-#### Week 1
-
-- [ ] Lambda NotifyFamily実装
+- [x] Lambda `LineNotification` 実装
   - S3イベントトリガー設定
-  - LINE Messaging API統合
-  - 署名付きURL生成との連携
-  - Secrets Managerからの通報情報取得
-- [ ] Lambda HandleLineWebhook実装
+  - LINE Messaging API統合（Flex Message）
+- [x] Lambda `MessageHandle` 実装
   - Webhook受信処理
-  - LINE署名検証
+  - LINE署名検証（HMAC-SHA256）
   - Device Shadow更新ロジック
-
-#### Week 2 ✅ 完了 (2026/02/14)
-
+  - Secrets Manager連携
 - [x] Raspberry Pi環境構築
   - OS・Python環境セットアップ
   - AWS IoT SDK統合
@@ -356,23 +361,18 @@
 - [x] メインアプリケーション開発（main.py）
   - Zigbeeボタン監視
   - Device Shadow同期
-  - 撮影・アップロードループ
-- [ ] 単体テスト実施
+  - Lambda Function URL呼び出しループ
+- [x] RichMenuHandle Lambda & リッチメニュー作成スクリプト実装
 
 ---
 
-### フェーズ2: UI/UX完成（1週間）
+### フェーズ2: UI/UX完成（⏳ 実装中）
 
-#### Week 3
-
-- [ ] LINEリッチメニュー実装
-  - メニュー画像作成
-  - JSON定義作成
-  - Messaging APIでメニュー登録
+- [x] リッチメニュー画像作成スクリプト・JSON定義スクリプト実装済み
+- [ ] LINEリッチメニュー登録（LINE Developersコンソールへの適用）
 - [ ] Webダッシュボード完成
-  - JavaScript自動リフレッシュ機能
-  - 複数カメラグリッド表示
-  - レスポンシブデザイン対応
+  - JavaScript自動リフレッシュ機能（5秒間隔）
+  - 署名付きURL取得の統合
 
 ---
 
@@ -506,8 +506,8 @@
 
 ### 問題管理
 
-- [既知の問題一覧](docs/Project/Proplems/Issues.md)
-- [TODOリスト](docs/Project/Proplems/TODO.md)
+- [既知の問題一覧](docs/Project/Problems/Issues.md)
+- [TODOリスト](docs/Project/Problems/TODO.md)
 
 ### セットアップガイド
 
@@ -521,7 +521,7 @@
 - [S3 Images Bucket](S3/Images/README.md)
 - [S3 Dashboard Bucket](S3/Dashboard/README.md)
 - [Lambda GenerateSignedURL](Lambda/GenerateSignedURL/README.md)
-- [Lambda FetchGroupID](Lambda/FetchGroupID/README.md)
+- [Lambda RichMenuHandle](Lambda/RichMenuHandle/README.md)
 - [Secrets Manager](SecretsManager/README.md)
 - [IoT Core](IotCore/README.md)
 
@@ -545,17 +545,16 @@
 
 ## 📊 プロジェクトステータスサマリー
 
-| 項目                   | 状態                  |
-| ---------------------- | --------------------- |
-| **プロジェクト進捗**   | 60%                   |
-| **本番稼働予定**       | 3週間後               |
-| **セキュリティ状態**   | 良好（一部改善予定）  |
-| **コスト状況**         | 予算内（月額1,700円） |
-| **技術リスク**         | 低〜中                |
-| **次のマイルストーン** | Lambda通知処理実装    |
+| 項目                   | 状態                           |
+| ---------------------- | ------------------------------ |
+| **プロジェクト進捗**   | 約85%                          |
+| **セキュリティ状態**   | 良好（一部改善予定）           |
+| **コスト状況**         | 予算内（月額1,700円）          |
+| **技術リスク**         | 低〜中                         |
+| **次のマイルストーン** | リッチメニュー登録・統合テスト |
 
 ---
 
-**Document Version:** 1.1  
-**Last Updated:** 2026年2月1日  
-**Next Review:** 2026年2月15日
+**Document Version:** 1.2
+**Last Updated:** 2026年2月19日
+**Next Review:** システム統合テスト後
