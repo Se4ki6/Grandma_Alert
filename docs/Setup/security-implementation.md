@@ -4,7 +4,7 @@
 
 ### ✅ 2.1 S3バケットをプライベート化
 
-[S3/Dashboard/s3.tf](S3/Dashboard/s3.tf)を変更：
+[AWS/S3/Dashboard/s3.tf](AWS/S3/Dashboard/s3.tf)を変更：
 
 - パブリックアクセスブロックを有効化
 - パブリックバケットポリシーを削除
@@ -12,7 +12,7 @@
 
 ### ✅ 2.2 CloudFrontディストリビューションの作成
 
-[S3/Dashboard/cloudfront.tf](S3/Dashboard/cloudfront.tf)を作成：
+[AWS/S3/Dashboard/cloudfront.tf](AWS/S3/Dashboard/cloudfront.tf)を作成：
 
 - Origin Access Control (OAC)を設定
 - S3へのアクセスをCloudFrontのみに制限
@@ -21,7 +21,7 @@
 
 ### ✅ 2.3 Lambda関数で署名付きURL生成
 
-[Lambda/GenerateSignedURL/](Lambda/GenerateSignedURL/)を作成：
+[AWS/Lambda/GenerateSignedURL/](AWS/Lambda/GenerateSignedURL/)を作成：
 
 - CloudFront署名付きURLを生成するLambda関数
 - SSMパラメータストアから秘密鍵を安全に取得
@@ -33,7 +33,7 @@
 ### 1. S3 + CloudFrontのデプロイ
 
 ```bash
-cd S3/Dashboard
+cd AWS/S3/Dashboard
 terraform init
 terraform plan
 terraform apply
@@ -68,7 +68,7 @@ aws ssm put-parameter \
 
 ### 4. Lambda関数のデプロイ
 
-[Lambda/GenerateSignedURL/terraform.tfvars](Lambda/GenerateSignedURL/terraform.tfvars)を編集：
+[AWS/Lambda/GenerateSignedURL/terraform.tfvars](AWS/Lambda/GenerateSignedURL/terraform.tfvars)を編集：
 
 ```terraform
 cloudfront_domain      = "d1234567890abc.cloudfront.net"  # 手順1で取得
@@ -78,7 +78,7 @@ cloudfront_key_pair_id = "APKAXXXXXXXXXX"                 # 手順2で取得
 デプロイ：
 
 ```bash
-cd Lambda/GenerateSignedURL
+cd AWS/Lambda/GenerateSignedURL
 terraform init
 terraform plan
 terraform apply
@@ -138,4 +138,4 @@ curl -X POST https://<lambda-function-url> \
 
 - [CloudFront OAC設定ガイド](https://docs.aws.amazon.com/ja_jp/AmazonCloudFront/latest/DeveloperGuide/private-content-restricting-access-to-s3.html)
 - [署名付きURL作成方法](https://docs.aws.amazon.com/ja_jp/AmazonCloudFront/latest/DeveloperGuide/private-content-signed-urls.html)
-- 詳細: [Lambda/GenerateSignedURL/README.md](Lambda/GenerateSignedURL/README.md)
+- 詳細: [AWS/Lambda/GenerateSignedURL/README.md](AWS/Lambda/GenerateSignedURL/README.md)

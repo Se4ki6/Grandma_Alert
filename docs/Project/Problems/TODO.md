@@ -7,16 +7,16 @@
 
 ## 📋 目次
 
-1. [S3/Dashboard モジュール](#s3dashboard-モジュール)
-2. [S3/Images モジュール](#s3images-モジュール)
-3. [ダッシュボード ↔ S3/Images 連携](#ダッシュボード--s3images-連携)
-4. [Lambda/GenerateSignedURL モジュール](#lambdageneratesignedurl-モジュール)
+1. [AWS/S3/Dashboard モジュール](#s3dashboard-モジュール)
+2. [AWS/S3/Images モジュール](#s3images-モジュール)
+3. [ダッシュボード ↔ AWS/S3/Images 連携](#ダッシュボード--s3images-連携)
+4. [AWS/Lambda/GenerateSignedURL モジュール](#lambdageneratesignedurl-モジュール)
 5. [Secrets Manager モジュール](#secrets-manager-モジュール)
 6. [全体的な実装順序](#全体的な実装順序)
 
 ---
 
-# S3/Dashboard モジュール
+# AWS/S3/Dashboard モジュール
 
 **レビュー日時:** 2026年1月22日
 
@@ -24,8 +24,8 @@
 
 ### 1. HTMLファイルが空
 
-- [x] `S3/Dashboard/upload_file/index.html` の実装
-- [x] `S3/Dashboard/upload_file/error.html` の実装
+- [x] `AWS/S3/Dashboard/upload_file/index.html` の実装
+- [x] `AWS/S3/Dashboard/upload_file/error.html` の実装
 - **影響:** 現在、空ファイルがS3にアップロードされるため、静的Webサイトとして機能しない
 - **優先度:** 🔴 高
 
@@ -50,7 +50,7 @@
   - [ｘ] `aws_s3_bucket_policy.dashboard_public` リソースを削除
 
 - [ｘ] **2.2 CloudFront ディストリビューションの作成**
-  - [ｘ] 新規ファイル `S3/Dashboard/cloudfront.tf` を作成
+  - [ｘ] 新規ファイル `AWS/S3/Dashboard/cloudfront.tf` を作成
   - [ｘ] Origin Access Control (OAC) の設定
   - [ｘ] S3バケットポリシーにCloudFrontからのアクセスのみ許可
   - [ｘ] Cache設定（画像は5秒でキャッシュ無効化）
@@ -91,7 +91,7 @@
 - **現状:** `allowed_origins = ["*"]` で全ドメインを許可
 - **推奨:** 実際に使用するドメインのみ許可
 - **優先度:** 🟡 中
-- **関連:** [Issues.md](Issues.md#問題2-cors設定が過度に緩い) - S3/Dashboard - 問題2
+- **関連:** [Issues.md](Issues.md#問題2-cors設定が過度に緩い) - AWS/S3/Dashboard - 問題2
 
 ---
 
@@ -111,7 +111,7 @@
 - [ ] ファイルサイズのチェック（空ファイル検知）
 - **効果:** デプロイ前に問題を検出できる
 - **優先度:** 🟢 低
-- **関連:** [Issues.md](Issues.md#問題4-バリデーション機能の不足) - S3/Dashboard - 問題4
+- **関連:** [Issues.md](Issues.md#問題4-バリデーション機能の不足) - AWS/S3/Dashboard - 問題4
 
 ### 5. タグ管理の統一
 
@@ -119,14 +119,14 @@
 - [ ] 現在、`aws_s3_bucket.dashboard` のみタグを適用
 - [ ] 他のリソース（versioning, CORS設定など）にも適用を検討
 - **優先度:** 🟢 低
-- **関連:** [Issues.md](Issues.md#問題5-タグ管理の不統一) - S3/Dashboard - 問題5
+- **関連:** [Issues.md](Issues.md#問題5-タグ管理の不統一) - AWS/S3/Dashboard - 問題5
 
 ### 6. エラーハンドリングの強化
 
 - [ ] HTMLファイルが存在しない場合の適切なエラーメッセージ
 - [ ] `filemd5()` のエラーハンドリング追加
 - **優先度:** 🟢 低
-- **関連:** [Issues.md](Issues.md#問題6-エラーハンドリングの不足) - S3/Dashboard - 問題6
+- **関連:** [Issues.md](Issues.md#問題6-エラーハンドリングの不足) - AWS/S3/Dashboard - 問題6
 
 ---
 
@@ -141,7 +141,7 @@
 - [ ] 画像読み込み失敗時のフォールバック表示
 - **設計書要件:** 「全カメラのグリッド表示」「5秒ごとの画像リロード処理」
 - **優先度:** 🔴 高
-- **関連:** [Issues.md](Issues.md#問題9-ダッシュボードuiの機能不足) - S3/Dashboard - 問題9
+- **関連:** [Issues.md](Issues.md#問題9-ダッシュボードuiの機能不足) - AWS/S3/Dashboard - 問題9
 
 ### 8. エラーページの実装
 
@@ -152,7 +152,7 @@
 
 ---
 
-## ✅ S3/Dashboard - 良好な実装（維持）
+## ✅ AWS/S3/Dashboard - 良好な実装（維持）
 
 - ✓ リソース構成が適切（バケット、バージョニング、ポリシー、CORS設定）
 - ✓ 静的Webサイトホスティング設定が正しく構成
@@ -162,7 +162,7 @@
 
 ---
 
-# S3/Images モジュール
+# AWS/S3/Images モジュール
 
 **作成日:** 2026年2月1日
 
@@ -170,7 +170,7 @@
 
 ### 1. パブリックアクセスの無効化
 
-- [ ] `S3/Images/s3.tf` の `aws_s3_bucket_public_access_block` を変更
+- [ ] `AWS/S3/Images/s3.tf` の `aws_s3_bucket_public_access_block` を変更
   ```terraform
   block_public_acls       = true   # false → true
   block_public_policy     = true   # false → true
@@ -182,7 +182,7 @@
 - **現状:** テスト用にパブリックアクセスが有効
 - **影響:** 画像URLを知っている人は誰でもアクセス可能
 - **優先度:** 🔴 高
-- **関連:** [Issues.md](Issues.md#-問題1-パブリックアクセスが有効テスト用設定のまま) - S3/Images - 問題1
+- **関連:** [Issues.md](Issues.md#-問題1-パブリックアクセスが有効テスト用設定のまま) - AWS/S3/Images - 問題1
 
 ### 2. CORS設定の厳格化
 
@@ -195,11 +195,11 @@
   ```
 - **現状:** `allowed_origins = ["*"]` で全ドメインを許可
 - **優先度:** 🟡 中
-- **関連:** [Issues.md](Issues.md#-問題2-cors設定が過度に緩い-1) - S3/Images - 問題2
+- **関連:** [Issues.md](Issues.md#-問題2-cors設定が過度に緩い-1) - AWS/S3/Images - 問題2
 
 ---
 
-## ✅ S3/Images - 良好な実装（維持）
+## ✅ AWS/S3/Images - 良好な実装（維持）
 
 - ✓ バケットバージョニングが有効
 - ✓ サーバーサイド暗号化（AES256）が設定済み
@@ -208,10 +208,10 @@
 
 ---
 
-# ダッシュボード ↔ S3/Images 連携
+# ダッシュボード ↔ AWS/S3/Images 連携
 
 **作成日:** 2026年2月1日  
-**対象ファイル:** `S3/Dashboard/upload_file/index.html`
+**対象ファイル:** `AWS/S3/Dashboard/upload_file/index.html`
 
 ## 🚨 重大な問題（機能が未完成）
 
@@ -304,7 +304,7 @@
 # Secrets Manager モジュール
 
 **作成日:** 2026年2月1日  
-**対象モジュール:** `SecretsManager/`
+**対象モジュール:** `AWS/SecretsManager/`
 
 ## ✅ Secrets Manager - 完了項目
 
@@ -348,14 +348,14 @@
 
 ---
 
-# Lambda/GenerateSignedURL モジュール
+# AWS/Lambda/GenerateSignedURL モジュール
 
 **作成日:** 2026年1月23日
 
 ## 📋 実装の全体フロー
 
 ```
-1. ✅ S3/Dashboard デプロイ
+1. ✅ AWS/S3/Dashboard デプロイ
    └─ CloudFront Distribution: d2zaynqig5sahs.cloudfront.net
 
 2. ✅ Lambda関数デプロイ完了
@@ -457,7 +457,7 @@ aws ssm get-parameter \
 
 ### 手順3: terraform.tfvarsを設定
 
-ファイル: `Lambda/GenerateSignedURL/terraform.tfvars`
+ファイル: `AWS/Lambda/GenerateSignedURL/terraform.tfvars`
 
 ```terraform
 region                 = "ap-northeast-1"
@@ -477,7 +477,7 @@ tags = {
 ### 手順4: Lambda関数をデプロイ
 
 ```bash
-cd /Users/sksrdik/workspace/Project/Grandma_Alert/Lambda/GenerateSignedURL
+cd /Users/sksrdik/workspace/Project/Grandma_Alert/AWS/Lambda/GenerateSignedURL
 
 # 初期化
 terraform init
@@ -507,7 +507,7 @@ lambda_function_url  = "https://xyz123.lambda-url.ap-northeast-1.on.aws/"
 
 #### オプションA: Key Groupを使用（推奨）
 
-`S3/Dashboard/cloudfront.tf` に追加:
+`AWS/S3/Dashboard/cloudfront.tf` に追加:
 
 ```terraform
 # CloudFront Public Key
@@ -538,7 +538,7 @@ resource "aws_cloudfront_distribution" "dashboard" {
 ```bash
 # 秘密鍵から公開鍵を抽出
 openssl rsa -pubout -in ~/secrets/grandma-alert/pk-APKAXXXXXXXXXX.pem \
-  -out /Users/sksrdik/workspace/Project/Grandma_Alert/S3/Dashboard/cloudfront_public_key.pem
+  -out /Users/sksrdik/workspace/Project/Grandma_Alert/AWS/S3/Dashboard/cloudfront_public_key.pem
 ```
 
 #### オプションB: Key Pair IDを直接指定
@@ -555,7 +555,7 @@ resource "aws_cloudfront_distribution" "dashboard" {
 **再デプロイ:**
 
 ```bash
-cd /Users/sksrdik/workspace/Project/Grandma_Alert/S3/Dashboard
+cd /Users/sksrdik/workspace/Project/Grandma_Alert/AWS/S3/Dashboard
 terraform apply
 ```
 
@@ -567,7 +567,7 @@ terraform apply
 
 ```bash
 # Lambda Function URLを取得
-LAMBDA_URL=$(cd Lambda/GenerateSignedURL && terraform output -raw lambda_function_url)
+LAMBDA_URL=$(cd AWS/Lambda/GenerateSignedURL && terraform output -raw lambda_function_url)
 
 # 署名付きURLを生成
 curl -X POST "$LAMBDA_URL" \
@@ -627,7 +627,7 @@ content-type: text/html
 - [ ] cryptography, boto3 のパッケージング
 - **影響:** 現在、Lambda実行時に `ModuleNotFoundError` が発生する可能性
 - **優先度:** 🔴 高
-- **関連:** [Issues.md](Issues.md#問題7-デプロイメントプロセスの改善余地) - Lambda/GenerateSignedURL - 問題7
+- **関連:** [Issues.md](Issues.md#問題7-デプロイメントプロセスの改善余地) - AWS/Lambda/GenerateSignedURL - 問題7
 
 ---
 
@@ -640,7 +640,7 @@ content-type: text/html
 - [ ] Cognito Identity Pool の設定（IAM認証の場合）
 - **現状:** `authorization_type = "NONE"` で誰でもアクセス可能
 - **優先度:** 🔴 高
-- **関連:** [Issues.md](Issues.md#問題1-lambda-function-urlが認証なし) - Lambda/GenerateSignedURL - 問題1
+- **関連:** [Issues.md](Issues.md#問題1-lambda-function-urlが認証なし) - AWS/Lambda/GenerateSignedURL - 問題1
 
 ### 3. レート制限の実装
 
@@ -649,14 +649,14 @@ content-type: text/html
 - [ ] Redis/ElastiCacheの検討（高度な制限が必要な場合）
 - **現状:** レート制限なし、DoS攻撃のリスク
 - **優先度:** 🔴 高
-- **関連:** [Issues.md](Issues.md#問題3-レート制限がない) - Lambda/GenerateSignedURL - 問題3
+- **関連:** [Issues.md](Issues.md#問題3-レート制限がない) - AWS/Lambda/GenerateSignedURL - 問題3
 
 ### 4. CORS設定の厳格化
 
 - [ ] `allowed_origins` を特定のドメインに制限
 - **現状:** `allowed_origins = ["*"]` で全ドメインを許可
 - **優先度:** 🟡 中
-- **関連:** [Issues.md](Issues.md#問題2-cors設定が過度に緩い-1) - Lambda/GenerateSignedURL - 問題2
+- **関連:** [Issues.md](Issues.md#問題2-cors設定が過度に緩い-1) - AWS/Lambda/GenerateSignedURL - 問題2
 
 ---
 
@@ -668,7 +668,7 @@ content-type: text/html
 - [ ] バリデーションエラーの適切な処理（400エラー）
 - [ ] 詳細なエラーメッセージの提供
 - **優先度:** 🟡 中
-- **関連:** [Issues.md](Issues.md#問題5-エラーハンドリングの不足) - Lambda/GenerateSignedURL - 問題5
+- **関連:** [Issues.md](Issues.md#問題5-エラーハンドリングの不足) - AWS/Lambda/GenerateSignedURL - 問題5
 
 ### 6. ロギングの強化
 
@@ -676,7 +676,7 @@ content-type: text/html
 - [ ] リクエスト情報の記録
 - [ ] CloudWatch Logs Insightsクエリの作成
 - **優先度:** 🟡 中
-- **関連:** [Issues.md](Issues.md#問題6-ロギングの不足) - Lambda/GenerateSignedURL - 問題6
+- **関連:** [Issues.md](Issues.md#問題6-ロギングの不足) - AWS/Lambda/GenerateSignedURL - 問題6
 
 ### 7. CloudFront Key Groupへの移行
 
@@ -684,7 +684,7 @@ content-type: text/html
 - [ ] 公開鍵をTerraformで管理
 - [ ] キーローテーション手順の整備
 - **優先度:** 🟡 中
-- **関連:** [Issues.md](Issues.md#問題4-cloudfront-key-pairの管理が手動) - Lambda/GenerateSignedURL - 問題4
+- **関連:** [Issues.md](Issues.md#問題4-cloudfront-key-pairの管理が手動) - AWS/Lambda/GenerateSignedURL - 問題4
 
 ---
 
@@ -696,7 +696,7 @@ content-type: text/html
 - [ ] または ElastiCache Redisでのキャッシュ戦略
 - [ ] メモリ割り当ての最適化
 - **優先度:** 🟢 低
-- **関連:** [Issues.md](Issues.md#問題8-コールドスタートの遅延) - Lambda/GenerateSignedURL - 問題8
+- **関連:** [Issues.md](Issues.md#問題8-コールドスタートの遅延) - AWS/Lambda/GenerateSignedURL - 問題8
 
 ---
 
@@ -709,7 +709,7 @@ content-type: text/html
 - [ ] レスポンス時間の追跡
 - [ ] ダッシュボードの作成
 - **優先度:** 🟡 中
-- **関連:** [Issues.md](Issues.md#問題10-モニタリングアラート機能の不足) - Lambda/GenerateSignedURL - 問題10
+- **関連:** [Issues.md](Issues.md#問題10-モニタリングアラート機能の不足) - AWS/Lambda/GenerateSignedURL - 問題10
 
 ### 10. テストコードの追加
 
@@ -717,11 +717,11 @@ content-type: text/html
 - [ ] 統合テストの実装
 - [ ] CI/CDパイプラインの構築
 - **優先度:** 🟡 中
-- **関連:** [Issues.md](Issues.md#問題11-テストコードの不足) - Lambda/GenerateSignedURL - 問題11
+- **関連:** [Issues.md](Issues.md#問題11-テストコードの不足) - AWS/Lambda/GenerateSignedURL - 問題11
 
 ---
 
-## ✅ Lambda/GenerateSignedURL - 良好な実装（維持）
+## ✅ AWS/Lambda/GenerateSignedURL - 良好な実装（維持）
 
 - ✓ Lambda Function URLの基本設定が適切
 - ✓ 環境変数での設定管理
@@ -754,7 +754,7 @@ ModuleNotFoundError: No module named 'cryptography'
 **解決:**
 
 ```bash
-cd Lambda/GenerateSignedURL
+cd AWS/Lambda/GenerateSignedURL
 rm -rf package lambda_function.zip
 terraform apply
 ```
@@ -794,11 +794,11 @@ MissingKey: The specified key does not exist
 
 ### フェーズ1: 基礎機能の完成（即座に対応）
 
-#### S3/Dashboard:
+#### AWS/S3/Dashboard:
 
 1. ✅ **HTMLファイルの基本実装**（問題1）- 完了
 
-#### Lambda/GenerateSignedURL:
+#### AWS/Lambda/GenerateSignedURL:
 
 2. ✅ **依存ライブラリのデプロイ修正**（問題1）- 完了
 3. ✅ **CloudFront Key Pair作成とSSM保存**（手順1-2）- 完了
@@ -812,7 +812,7 @@ MissingKey: The specified key does not exist
 8. ✅ **通報情報の格納（名前、住所、病歴）** - 完了
 9. ✅ **Lambda関数からのアクセス許可設定** - 完了
 
-#### ダッシュボード ↔ S3/Images 連携:
+#### ダッシュボード ↔ AWS/S3/Images 連携:
 
 10. ⬜ **署名付きURL方式への移行**（ダッシュボード連携 - 問題1）
     - `CONFIG.LAMBDA_SIGNED_URL_ENDPOINT` を設定
@@ -823,9 +823,9 @@ MissingKey: The specified key does not exist
 
 ### フェーズ2: セキュリティ強化（本番環境前に対応）
 
-#### S3/Images:
+#### AWS/S3/Images:
 
-9. ⬜ **パブリックアクセスの無効化**（S3/Images - 問題1） 🔴 最優先
+9. ⬜ **パブリックアクセスの無効化**（AWS/S3/Images - 問題1） 🔴 最優先
    - `block_public_acls` 等を `true` に変更
    - パブリックポリシーを削除
 
@@ -833,9 +833,9 @@ MissingKey: The specified key does not exist
 
 10. ⬜ **Lambda Function URLの認証追加**（Lambda - 問題2）
 11. ⬜ **レート制限の実装**（Lambda - 問題3）
-12. ⬜ **CORS設定の厳格化**（S3/Dashboard, S3/Images, Lambda）
+12. ⬜ **CORS設定の厳格化**（AWS/S3/Dashboard, AWS/S3/Images, Lambda）
 
-#### S3/Dashboard:
+#### AWS/S3/Dashboard:
 
 13. ⬜ **アクセスログの設定**（S3 - 問題3）
 
@@ -846,14 +846,14 @@ MissingKey: The specified key does not exist
 14. ⬜ **画像パス規則の文書化と標準化**（ダッシュボード連携 - 問題3）
 15. ⬜ **エラーハンドリングの改善**（ダッシュボード連携 - 問題4）
 
-#### S3/Dashboard:
+#### AWS/S3/Dashboard:
 
 16. ⬜ **バリデーション機能の追加**（S3 - 問題4）
 17. ⬜ **タグ管理の統一**（S3 - 問題5）
 18. ⬜ **エラーハンドリングの強化**（S3 - 問題6）
 19. ⬜ **キャッシュ戦略の最適化**（S3 - 問題7）
 
-#### Lambda/GenerateSignedURL:
+#### AWS/Lambda/GenerateSignedURL:
 
 20. ⬜ **エラーハンドリングの改善**（Lambda - 問題5）
 21. ⬜ **ロギングの強化**（Lambda - 問題6）
@@ -871,7 +871,7 @@ MissingKey: The specified key does not exist
 
 | 優先度  | タスク数 | モジュール                                                                                   |
 | ------- | -------- | -------------------------------------------------------------------------------------------- |
-| 🔴 高   | 4        | S3/Images パブリックアクセス無効化、署名付きURL移行、カメラリストAPI、Lambda認証、レート制限 |
+| 🔴 高   | 4        | AWS/S3/Images パブリックアクセス無効化、署名付きURL移行、カメラリストAPI、Lambda認証、レート制限 |
 | 🟡 中   | 12       | CORS、ログ、エラーハンドリング、Key Group移行、監視、パス規則文書化                          |
 | 🟢 低   | 7        | バリデーション、タグ、キャッシュ最適化、テストコード等                                       |
 | ✅ 完了 | 8        | HTML実装、Lambda署名URL、Secrets Manager設定、Dashboard署名付きURLエンドポイント             |

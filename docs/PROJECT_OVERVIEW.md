@@ -518,12 +518,12 @@
 
 ### モジュール別README
 
-- [S3 Images Bucket](S3/Images/README.md)
-- [S3 Dashboard Bucket](S3/Dashboard/README.md)
-- [Lambda GenerateSignedURL](Lambda/GenerateSignedURL/README.md)
-- [Lambda FetchGroupID](Lambda/FetchGroupID/README.md)
-- [Secrets Manager](SecretsManager/README.md)
-- [IoT Core](IotCore/README.md)
+- [S3 Images Bucket](AWS/S3/Images/README.md)
+- [S3 Dashboard Bucket](AWS/S3/Dashboard/README.md)
+- [Lambda GenerateSignedURL](AWS/Lambda/GenerateSignedURL/README.md)
+- [Lambda FetchGroupID](AWS/Lambda/FetchGroupID/README.md)
+- [Secrets Manager](AWS/SecretsManager/README.md)
+- [IoT Core](AWS/IotCore/README.md)
 
 ---
 

@@ -22,7 +22,7 @@
 
 ### 1. ElderlyWatcherAppクラスの存在意義
 
-**ファイル**: `Raspberrypi/Script/src/main.py` (L8)
+**ファイル**: `AWS/Raspberrypi/Script/src/main.py` (L8)
 
 ```python
 # fixme:ここのクラス化意味ない？（薄いからなくす）
@@ -42,7 +42,7 @@ class ElderlyWatcherApp:
 
 ### 2. コンストラクタでのインスタンス生成
 
-**ファイル**: `Raspberrypi/Script/src/main.py` (L10)
+**ファイル**: `AWS/Raspberrypi/Script/src/main.py` (L10)
 
 ```python
 # fixme:各インスタンスは引数として渡すべき
@@ -67,7 +67,7 @@ def __init__(self, state=None, camera=None, storage=None, iot=None):
 
 ### 3. DI違反（依存性の直接注入）
 
-**ファイル**: `Raspberrypi/Script/src/main.py` (L13)
+**ファイル**: `AWS/Raspberrypi/Script/src/main.py` (L13)
 
 ```python
 # fixme:DI違反（インスタンスを直接プロパティに注入している）
@@ -91,7 +91,7 @@ self.storage = StorageManager()
 
 ### 4. ステータスインスタンスの依存性注入
 
-**ファイル**: `Raspberrypi/Script/src/main.py` (L18)
+**ファイル**: `AWS/Raspberrypi/Script/src/main.py` (L18)
 
 ```python
 # fixme:引数はステータスのインスタンスごと渡せば依存性注入できそう
@@ -113,7 +113,7 @@ self.iot = IotClient(state_manager=self.state)
 
 ### 5. Configクラスの存在意義
 
-**ファイル**: `Raspberrypi/Script/src/util/config.py` (L7)
+**ファイル**: `AWS/Raspberrypi/Script/src/util/config.py` (L7)
 
 ```python
 # fixme:クラス化する意味ない？
@@ -137,7 +137,7 @@ class Config:
 
 ### 6. ステータスのenum化
 
-**ファイル**: `Raspberrypi/Script/src/util/state_manager.py` (L5)
+**ファイル**: `AWS/Raspberrypi/Script/src/util/state_manager.py` (L5)
 
 ```python
 # fixme: ステータスはenumにするべき？
@@ -164,7 +164,7 @@ class Status(Enum):
 
 ### 7. delete_listenerの追加
 
-**ファイル**: `Raspberrypi/Script/src/util/state_manager.py` (L17)
+**ファイル**: `AWS/Raspberrypi/Script/src/util/state_manager.py` (L17)
 
 ```python
 # fixme: observewerパターンとしてはdelete_listenerも必要か？
